@@ -1,0 +1,81 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String   @id @default(uuid())
+  telegramId    BigInt   @unique
+  language      String   @default("en")
+  role          UserRole @default(BUYER)
+  h3Index       String?  // H3 hex-grid index for hyper-local matching
+  walletAddress String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  chefProfile   ChefProfile?
+  orders        Order[]       @relation("BuyerOrders")
+  reviewsGiven  Review[]      @relation("ReviewsGiven")
+}
+
+model ChefProfile {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id])
+  bio            String?
+  sanitaryDocs   String?  // Hash or URL to encrypted sanitary docs
+  rating         Float    @default(0)
+  isOnline       Boolean  @default(false)
+
+  orders         Order[]  @relation("ChefOrders")
+  reviews        Review[] @relation("ChefReviews")
+}
+
+model Order {
+  id               String      @id @default(uuid())
+  buyerId          String
+  buyer            User        @relation("BuyerOrders", fields: [buyerId], references: [id])
+  chefId           String
+  chef             ChefProfile @relation("ChefOrders", fields: [chefId], references: [id])
+  status           OrderStatus @default(PENDING)
+  amount           Float
+  platformFee      Float       // 1% fee
+  escrowAddress    String?     // Smart contract escrow address
+  deliverySecret   String?     // Hash for anonymous delivery confirmation
+  encryptedDetails String?     // End-to-end encrypted order details
+
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  orderId   String   @unique
+  chefId    String
+  chef      ChefProfile @relation("ChefReviews", fields: [chefId], references: [id])
+  authorId  String
+  author    User     @relation("ReviewsGiven", fields: [authorId], references: [id])
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+}
+
+enum UserRole {
+  BUYER
+  CHEF
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  ACCEPTED
+  PREPARING
+  IN_TRANSIT
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}

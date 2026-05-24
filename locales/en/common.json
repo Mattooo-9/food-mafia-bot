@@ -1,0 +1,19 @@
+{
+  "welcome": "Welcome to Food Mafia. Anonymous P2P Food Marketplace.",
+  "role_selection": "Choose your role:",
+  "buyer": "Buyer 🍔",
+  "seller": "Chef 👨‍🍳",
+  "settings": "Settings ⚙️",
+  "language_changed": "Language changed to English.",
+  "order_status": "Order Status: {{status}}",
+  "matching_chef": "Looking for chefs within 2km...",
+  "buyer_welcome": "Welcome Buyer! Use /find to see chefs nearby.",
+  "chef_onboarding": "Welcome Chef! Please complete the sanitary checklist.",
+  "location_updated": "Location updated. Your H3 Index: {{h3Index}}",
+  "no_active_order": "You don't have an active order.",
+  "stream_created": "Encrypted video stream created: {{url}}",
+  "sanitary_verification": "Please confirm your sanitary status:",
+  "checklist_gloves": "Wearing gloves",
+  "checklist_mask": "Wearing mask",
+  "checklist_sanitized": "Workspace sanitized"
+}
