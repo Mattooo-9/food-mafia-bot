@@ -7,6 +7,7 @@ export const handleStart = async (ctx: MyContext) => {
   await ctx.reply(
     t('welcome', lang),
     Markup.inlineKeyboard([
+      [Markup.button.webApp(t('open_marketplace', lang), process.env.WEBAPP_URL || 'https://foodmafia.bot/app')],
       [Markup.button.callback(t('buyer', lang), 'role_buyer')],
       [Markup.button.callback(t('seller', lang), 'role_chef')],
       [Markup.button.callback(t('settings', lang), 'settings')],

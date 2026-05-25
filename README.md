@@ -12,6 +12,7 @@ A decentralized, anonymous, hyper-local food marketplace built for Telegram.
 - **Web3 Escrow & Economy**:
   - 1% platform fee logic built into the `FoodEscrow` Solidity contract.
   - Support for Jettons (TON) or EVM-based tokens.
+- **Telegram Mini App (TMA)**: Interactive web-based marketplace UI for a seamless user experience.
 - **Multilingual Support**: Full i18n support for English and Russian.
 - **Sanitary Verification**: Automated checklist for chefs to ensure safety.
 - **Decentralized Ratings**: Transparent rating system recorded on-chain.
@@ -26,6 +27,7 @@ A decentralized, anonymous, hyper-local food marketplace built for Telegram.
 
 ## Setup
 
+### Backend
 1. **Install Dependencies**:
    ```bash
    npm install
@@ -48,6 +50,18 @@ A decentralized, anonymous, hyper-local food marketplace built for Telegram.
    ```bash
    npm start
    ```
+
+### WebApp (Mini App)
+1. **Navigate to directory**:
+   ```bash
+   cd webapp
+   ```
+2. **Install & Build**:
+   ```bash
+   npm install
+   npm run build
+   ```
+3. **Deploy**: Host the `dist` folder on a static hosting service and set `WEBAPP_URL` in your `.env`.
 
 ## Architecture
 
