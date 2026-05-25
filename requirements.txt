@@ -1,0 +1,5 @@
+aiogram
+h3
+web3
+python-dotenv
+pydantic
