@@ -8,6 +8,10 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from dotenv import load_dotenv
 from aiohttp import web
 
+# Import core modular router
+from src.core.router import get_main_router
+from src.core.services.user_service import user_service
+
 load_dotenv()
 
 API_TOKEN = os.getenv("BOT_TOKEN")
@@ -21,11 +25,20 @@ logging.basicConfig(level=logging.INFO)
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
+# Attach the main core router
+dp.include_router(get_main_router())
+
 @dp.message(Command("start"))
-async def cmd_start(message: types.Message):
+async def cmd_start_main(message: types.Message):
+    user = user_service.get_user(message.from_user.id)
+
+    # If onboarding is not complete, the onboarding handler (via router) will take over
+    if not user or not user.get('lang') or not user.get('location'):
+        return # Handled by onboarding.py router
+
     builder = InlineKeyboardBuilder()
     builder.row(InlineKeyboardButton(
-        text="Open Food Mafia 🍔",
+        text="Launch Food Mafia 🍔",
         web_app=WebAppInfo(url=WEBAPP_URL)
     ))
 
@@ -34,17 +47,17 @@ async def cmd_start(message: types.Message):
         reply_markup=builder.as_markup()
     )
 
+# Web handlers
 async def handle_index(request):
-    return web.FileResponse('./webapp/dist/index.html')
+    return web.FileResponse('./webapp/index.html')
 
 async def start_web_server():
     app = web.Application()
     app.router.add_get('/', handle_index)
 
-    # Serve built assets
-    dist_path = os.path.join(os.path.dirname(__file__), 'webapp/dist')
-    if os.path.exists(dist_path):
-        app.router.add_static('/', dist_path)
+    webapp_path = os.path.join(os.path.dirname(__file__), 'webapp')
+    if os.path.exists(webapp_path):
+        app.router.add_static('/', webapp_path)
 
     runner = web.AppRunner(app)
     await runner.setup()
@@ -52,6 +65,7 @@ async def start_web_server():
     await site.start()
 
 async def main():
+    logging.info("Starting Scalable Food Mafia Bot...")
     await asyncio.gather(
         dp.start_polling(bot),
         start_web_server()

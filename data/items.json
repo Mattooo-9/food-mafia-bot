@@ -1,0 +1,26 @@
+[
+    {
+        "id": "1",
+        "name": "Mafia Burger",
+        "price": 0.5,
+        "color_category": "Red",
+        "bju": "20/15/30",
+        "tags": ["Energy"]
+    },
+    {
+        "id": "2",
+        "name": "Napoli Pizza",
+        "price": 0.3,
+        "color_category": "Purple",
+        "bju": "10/12/45",
+        "tags": ["Balance"]
+    },
+    {
+        "id": "3",
+        "name": "Detox Salad",
+        "price": 0.2,
+        "color_category": "Green",
+        "bju": "5/2/10",
+        "tags": ["Detox", "Vegan"]
+    }
+]
