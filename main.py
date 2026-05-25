@@ -24,6 +24,7 @@ dp = Dispatcher()
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     builder = InlineKeyboardBuilder()
+    # Main and ONLY button to launch the Mini App
     builder.row(InlineKeyboardButton(
         text="Launch Food Mafia 🍔",
         web_app=WebAppInfo(url=WEBAPP_URL)
@@ -36,6 +37,7 @@ async def cmd_start(message: types.Message):
 
 # Web handlers
 async def handle_index(request):
+    # Explicitly serve index.html
     return web.FileResponse('./webapp/index.html')
 
 async def handle_health(request):
@@ -64,6 +66,7 @@ async def start_web_server():
 
 async def main():
     logging.info("Starting bot and web server...")
+    # Run bot polling and web server concurrently
     await asyncio.gather(
         dp.start_polling(bot),
         start_web_server()
