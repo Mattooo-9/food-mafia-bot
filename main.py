@@ -34,18 +34,24 @@ async def cmd_start(message: types.Message):
         reply_markup=builder.as_markup()
     )
 
-# Health-check web server handler
+# Web handlers
+async def handle_index(request):
+    return web.FileResponse('./webapp/index.html')
+
 async def handle_health(request):
     return web.Response(text="OK")
 
 async def start_web_server():
     app = web.Application()
+
+    # Route for the main page
+    app.router.add_get('/', handle_index)
     app.router.add_get('/health', handle_health)
 
-    # Serve static files from webapp directory
+    # Serve other static files (css, js, manifest)
     webapp_path = os.path.join(os.path.dirname(__file__), 'webapp')
     if os.path.exists(webapp_path):
-        app.router.add_static('/', webapp_path, show_index=True)
+        app.router.add_static('/', webapp_path)
         logging.info(f"Serving static files from {webapp_path}")
     else:
         logging.warning(f"Webapp path {webapp_path} not found!")
@@ -58,7 +64,6 @@ async def start_web_server():
 
 async def main():
     logging.info("Starting bot and web server...")
-    # Run bot polling and web server concurrently
     await asyncio.gather(
         dp.start_polling(bot),
         start_web_server()
