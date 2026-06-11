@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -16,10 +17,30 @@ class Settings(BaseSettings):
     admin_id: int = 0
     webapp_url: str = ""
 
+    # Cloud mode: receive Telegram updates via webhook instead of polling.
+    use_webhook: bool = False
+    # Render.com injects this automatically with the public service URL.
+    render_external_url: str = ""
+
     database_url: str = f"sqlite+aiosqlite:///{(BASE_DIR / 'database' / 'food_mafia.db').as_posix()}"
 
     host: str = "0.0.0.0"
     port: int = 8000
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def _normalize_database_url(cls, value: str) -> str:
+        """Accept plain postgres:// URLs (as provided by cloud hosts) for asyncpg."""
+        if isinstance(value, str):
+            if value.startswith("postgres://"):
+                return "postgresql+asyncpg://" + value[len("postgres://"):]
+            if value.startswith("postgresql://"):
+                return "postgresql+asyncpg://" + value[len("postgresql://"):]
+        return value
+
+    @property
+    def public_url(self) -> str:
+        return (self.webapp_url or self.render_external_url).rstrip("/")
 
     upload_dir: Path = BASE_DIR / "uploads"
     max_upload_size: int = 5 * 1024 * 1024  # 5 MB

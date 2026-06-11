@@ -28,11 +28,11 @@ def main_reply_keyboard() -> ReplyKeyboardMarkup:
 
 
 def webapp_keyboard() -> InlineKeyboardMarkup | None:
-    if not settings.webapp_url:
+    if not settings.public_url:
         return None
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="🍲 Открыть Еда Рядом", web_app=WebAppInfo(url=settings.webapp_url))]
+            [InlineKeyboardButton(text="🍲 Открыть Еда Рядом", web_app=WebAppInfo(url=settings.public_url))]
         ]
     )
 
