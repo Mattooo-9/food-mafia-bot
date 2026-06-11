@@ -1,0 +1,42 @@
+from typing import Annotated
+
+from fastapi import Depends, Header, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from backend.config import settings
+from backend.database import get_session
+from backend.models import User
+from backend.services import user_service
+from backend.utils.telegram_auth import InitDataError, validate_init_data
+
+SessionDep = Annotated[AsyncSession, Depends(get_session)]
+
+
+async def get_current_user(
+    session: SessionDep,
+    x_telegram_init_data: Annotated[str | None, Header()] = None,
+) -> User:
+    if not x_telegram_init_data:
+        raise HTTPException(status_code=401, detail="Откройте приложение через Telegram")
+    try:
+        tg_user = validate_init_data(
+            x_telegram_init_data,
+            settings.bot_token,
+            settings.init_data_max_age_seconds,
+        )
+    except InitDataError as exc:
+        raise HTTPException(status_code=401, detail=f"Невалидные данные авторизации: {exc}") from exc
+
+    return await user_service.get_or_create_user(session, tg_user)
+
+
+CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+async def get_current_cook(user: CurrentUser) -> User:
+    if not user.is_cook:
+        raise HTTPException(status_code=403, detail="Доступно только поварам")
+    return user
+
+
+CurrentCook = Annotated[User, Depends(get_current_cook)]
