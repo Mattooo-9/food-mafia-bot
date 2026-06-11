@@ -77,6 +77,22 @@ async def setup_webhook() -> None:
     logger.info("Bot started (webhook): @%s -> %s", me.username, url)
 
 
+async def keep_alive_loop() -> None:
+    """Ping our own public URL so free-tier hosting never goes to sleep."""
+    import aiohttp
+
+    interval = settings.keep_alive_interval_minutes * 60
+    url = settings.public_url + "/health"
+    while True:
+        await asyncio.sleep(interval)
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as resp:
+                    logger.info("Keep-alive ping %s -> %s", url, resp.status)
+        except Exception as exc:  # noqa: BLE001 — never let the loop die
+            logger.warning("Keep-alive ping failed: %s", exc)
+
+
 async def main() -> None:
     setup_logging()
     await init_db()
@@ -90,7 +106,10 @@ async def main() -> None:
     try:
         if settings.use_webhook and settings.public_url:
             await setup_webhook()
-            await run_api(app)
+            tasks = [run_api(app)]
+            if settings.keep_alive_interval_minutes > 0:
+                tasks.append(keep_alive_loop())
+            await asyncio.gather(*tasks)
         else:
             if settings.use_webhook:
                 logger.warning("USE_WEBHOOK=1, но публичный URL не задан — запускаю polling")

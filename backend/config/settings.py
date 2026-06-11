@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     use_webhook: bool = False
     # Render.com injects this automatically with the public service URL.
     render_external_url: str = ""
+    # Self-ping to prevent free-tier hosting from sleeping (minutes, 0 = off).
+    keep_alive_interval_minutes: int = 10
 
     database_url: str = f"sqlite+aiosqlite:///{(BASE_DIR / 'database' / 'food_mafia.db').as_posix()}"
 
