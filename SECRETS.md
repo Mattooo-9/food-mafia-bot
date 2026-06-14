@@ -1,53 +1,42 @@
-# Куда класть секреты (токены НЕ коммитить в git)
+# Куда класть секреты
 
-## Локально (только ваш ПК)
+## ✅ Уже настроено автоматически
 
-Файл **`.env`** в корне проекта — уже в `.gitignore`.
+**GitHub Repository Secrets** (через `gh`, в коде не хранятся):
+- `BOT_TOKEN`
+- `ADMIN_ID`
+- `WEBHOOK_SECRET` — отдельный секрет для webhook (не равен токену бота)
 
-```
-BOT_TOKEN=...
-ADMIN_ID=8017348770
-USE_WEBHOOK=0
-```
+**GitHub Variables:**
+- `RENDER_URL` = `https://food-mafia-bot.onrender.com`
 
-## Render.com (основной облачный деплой)
+## Локально
+
+Файл **`.env`** — только на вашем ПК, в git не попадает.
+
+## Render.com (облако 24/7)
 
 1. Откройте: https://render.com/deploy?repo=https://github.com/Mattooo-9/food-mafia-bot  
-2. При создании сервиса введите в **Environment Variables**:
-   - `BOT_TOKEN` — токен от @BotFather
-   - `ADMIN_ID` — `8017348770`
-3. Остальное подставится из `render.yaml`:
-   - `USE_WEBHOOK=1`
-   - `DATABASE_URL` — из PostgreSQL Render
-   - `RENDER_EXTERNAL_URL` — Render добавит сам (URL Mini App)
+2. В Environment Variables вставьте:
+   - `BOT_TOKEN` — из GitHub Secrets или BotFather
+   - `ADMIN_ID` = `8017348770`
+   - `WEBHOOK_SECRET` — скопируйте из GitHub → Settings → Secrets → Actions → WEBHOOK_SECRET (показать нельзя, только при создании; при необходимости сгенерируйте новый и обновите в Render + GitHub)
+3. После деплоя: Settings → Deploy Hook → скопируйте URL → GitHub Secrets → `RENDER_DEPLOY_HOOK` (для автодеплоя при push)
 
-**Не добавляйте** `WEBAPP_URL` на Render — достаточно `RENDER_EXTERNAL_URL`.
+Render сам добавит `RENDER_EXTERNAL_URL` и `DATABASE_URL`.
 
-## Railway.app (альтернатива)
+## Railway (альтернатива)
 
-В проекте → **Variables**:
+Variables: `BOT_TOKEN`, `ADMIN_ID`, `USE_WEBHOOK=1`, `PUBLIC_URL`, `WEBHOOK_SECRET`
 
-| Переменная | Значение |
-|---|---|
-| `BOT_TOKEN` | токен бота |
-| `ADMIN_ID` | `8017348770` |
-| `USE_WEBHOOK` | `1` |
-| `PUBLIC_URL` | `https://<ваш-домен>.up.railway.app` |
+## Безопасность
 
-## GitHub (только для пингера, не секреты)
-
-Settings → Secrets and variables → Actions → **Variables**:
-
-- `RENDER_URL` = `https://food-mafia-bot.onrender.com` (ваш реальный URL после деплоя)
-
-Токен бота в GitHub **не нужен**.
-
-## Что делает приложение само при старте в облаке
-
-- Webhook Telegram → `/tg/webhook`
-- Кнопка меню «Еда Рядом» → Mini App
-- Keep-alive пинг `/health` каждые 10 мин
+- Токен бота **светился в чате** — рекомендуется **/revoke** старый и выдать новый в @BotFather, затем обновить `.env`, GitHub Secrets и Render.
+- Webhook защищён заголовком `X-Telegram-Bot-Api-Secret-Token`.
+- В продакшене отключены `/docs` и `/redoc`.
+- Rate limit на `/api/*` и `/tg/webhook`.
+- Security headers (CSP, HSTS, X-Frame-Options).
 
 ## Важно
 
-Пока бот работает в облаке — **не запускайте** `python main.py` локально (сломает webhook).
+Пока бот в облаке — **не запускайте** `python main.py` локально.

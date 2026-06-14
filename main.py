@@ -21,6 +21,8 @@ WEBHOOK_PATH = "/tg/webhook"
 
 
 def webhook_secret() -> str:
+    if settings.webhook_secret:
+        return settings.webhook_secret
     return hashlib.sha256(settings.bot_token.encode()).hexdigest()[:32]
 
 

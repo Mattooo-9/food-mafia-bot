@@ -9,6 +9,7 @@ from backend.api.routes import api_router
 from backend.config import settings
 from backend.config.settings import BASE_DIR
 from backend.utils.rate_limit import RateLimitMiddleware
+from backend.utils.security import SecurityHeadersMiddleware
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +17,10 @@ FRONTEND_DIST = BASE_DIR / "frontend" / "dist"
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Еда Рядом API", version="1.0.0")
+    docs_url = None if settings.use_webhook else "/docs"
+    redoc_url = None if settings.use_webhook else "/redoc"
+    app = FastAPI(title="Еда Рядом API", version="1.0.0", docs_url=docs_url, redoc_url=redoc_url)
+    app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(RateLimitMiddleware)
     app.include_router(api_router)
 

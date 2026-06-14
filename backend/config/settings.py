@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     bot_token: str
     admin_id: int = 0
     webapp_url: str = ""
+    # Отдельный секрет webhook (если пусто — выводится из BOT_TOKEN).
+    webhook_secret: str = ""
 
     # Cloud: webhook вместо polling (Render/Railway ставят USE_WEBHOOK=1).
     use_webhook: bool = False

@@ -1,0 +1,39 @@
+name: deploy-cloud
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-cloud
+  cancel-in-progress: true
+
+jobs:
+  deploy-render:
+    name: Trigger Render deploy
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Deploy to Render
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "RENDER_DEPLOY_HOOK not set — skip (создайте сервис на Render и добавьте Deploy Hook в GitHub Secrets)"
+            exit 0
+          fi
+          curl -fsS -X POST "$HOOK" -H "Content-Type: application/json" -d '{"clearCache":"do_not_clear"}'
+          echo "Render deploy triggered"
+
+  keepalive:
+    name: Keep service awake
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping health endpoint
+        env:
+          RENDER_URL: ${{ vars.RENDER_URL }}
+        run: |
+          URL="${RENDER_URL:-https://food-mafia-bot.onrender.com}"
+          echo "Pinging $URL/health"
+          curl -fsS --max-time 120 "$URL/health" || true

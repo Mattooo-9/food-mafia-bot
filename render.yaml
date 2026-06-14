@@ -9,6 +9,8 @@ services:
         sync: false
       - key: ADMIN_ID
         sync: false
+      - key: WEBHOOK_SECRET
+        sync: false
       - key: USE_WEBHOOK
         value: "1"
       - key: LOG_LEVEL

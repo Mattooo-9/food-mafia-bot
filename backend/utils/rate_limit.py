@@ -34,7 +34,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             del self._hits[key]
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        if not request.url.path.startswith("/api/"):
+        if not (
+            request.url.path.startswith("/api/")
+            or request.url.path.startswith("/tg/webhook")
+        ):
             return await call_next(request)
 
         now = time.monotonic()
