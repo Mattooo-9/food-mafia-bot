@@ -1,41 +1,48 @@
-# Куда класть секреты
+# Секреты — куда класть
 
-## ✅ Уже настроено автоматически
+## ✅ Уже в GitHub Secrets (Actions)
 
-**GitHub Repository Secrets** (через `gh`, в коде не хранятся):
-- `BOT_TOKEN`
-- `ADMIN_ID`
-- `WEBHOOK_SECRET` — отдельный секрет для webhook (не равен токену бота)
+| Secret | Назначение |
+|---|---|
+| `BOT_TOKEN` | Токен Telegram-бота |
+| `ADMIN_ID` | `8017348770` |
+| `WEBHOOK_SECRET` | Отдельный секрет webhook |
 
-**GitHub Variables:**
-- `RENDER_URL` = `https://food-mafia-bot.onrender.com`
+## ⚠️ Нужен один раз для автодеплоя (бесплатно, без карты)
+
+1. Зарегистрируйтесь на **https://render.com** (GitHub login, карта не нужна).
+2. **Account Settings → API Keys** → Create API Key.
+3. Добавьте в GitHub:
+   ```powershell
+   gh secret set RENDER_API_KEY
+   ```
+4. Запустите деплой:
+   ```powershell
+   gh workflow run deploy-render-api
+   ```
+
+Скрипт `scripts/deploy_render.py` создаст free web service + PostgreSQL из `render.yaml` логики, пропишет env и задеплоит.
 
 ## Локально
 
-Файл **`.env`** — только на вашем ПК, в git не попадает.
+Файл `.env` — только на ПК, в git не попадает.
 
-## Render.com (облако 24/7)
+## Почему не Railway / Fly.io
 
-1. Откройте: https://render.com/deploy?repo=https://github.com/Mattooo-9/food-mafia-bot  
-2. В Environment Variables вставьте:
-   - `BOT_TOKEN` — из GitHub Secrets или BotFather
-   - `ADMIN_ID` = `8017348770`
-   - `WEBHOOK_SECRET` — скопируйте из GitHub → Settings → Secrets → Actions → WEBHOOK_SECRET (показать нельзя, только при создании; при необходимости сгенерируйте новый и обновите в Render + GitHub)
-3. После деплоя: Settings → Deploy Hook → скопируйте URL → GitHub Secrets → `RENDER_DEPLOY_HOOK` (для автодеплоя при push)
+- **Railway** — trial истёк на аккаунте.
+- **Fly.io** — требует карту даже на free tier.
 
-Render сам добавит `RENDER_EXTERNAL_URL` и `DATABASE_URL`.
+## Render (рекомендуется, бесплатно)
 
-## Railway (альтернатива)
-
-Variables: `BOT_TOKEN`, `ADMIN_ID`, `USE_WEBHOOK=1`, `PUBLIC_URL`, `WEBHOOK_SECRET`
+- Web service free + PostgreSQL free 30 дней
+- `RENDER_EXTERNAL_URL` подставляется сам
+- Webhook + кнопка Mini App настраиваются при старте
 
 ## Безопасность
 
-- Токен бота **светился в чате** — рекомендуется **/revoke** старый и выдать новый в @BotFather, затем обновить `.env`, GitHub Secrets и Render.
-- Webhook защищён заголовком `X-Telegram-Bot-Api-Secret-Token`.
-- В продакшене отключены `/docs` и `/redoc`.
-- Rate limit на `/api/*` и `/tg/webhook`.
-- Security headers (CSP, HSTS, X-Frame-Options).
+- Токен светился в чате → **/revoke** в @BotFather и обновить секреты.
+- Webhook защищён `X-Telegram-Bot-Api-Secret-Token`.
+- `/docs` отключены в облаке.
 
 ## Важно
 
