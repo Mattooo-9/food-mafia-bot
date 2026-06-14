@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -17,32 +17,31 @@ class Settings(BaseSettings):
     admin_id: int = 0
     webapp_url: str = ""
 
-    # Cloud mode: receive Telegram updates via webhook instead of polling.
+    # Cloud: webhook вместо polling (Render/Railway ставят USE_WEBHOOK=1).
     use_webhook: bool = False
-    # Render.com injects this automatically with the public service URL.
+    # Render.com подставляет сам; Railway — задайте WEBAPP_URL или PUBLIC_URL.
     render_external_url: str = ""
-    # Self-ping to prevent free-tier hosting from sleeping (minutes, 0 = off).
+    public_url_override: str = Field(default="", validation_alias="PUBLIC_URL")
     keep_alive_interval_minutes: int = 10
 
     database_url: str = f"sqlite+aiosqlite:///{(BASE_DIR / 'database' / 'food_mafia.db').as_posix()}"
 
     host: str = "0.0.0.0"
-    port: int = 8000
+    port: int = Field(default=8000, validation_alias="PORT")
 
     @field_validator("database_url", mode="before")
     @classmethod
     def _normalize_database_url(cls, value: str) -> str:
-        """Accept plain postgres:// URLs (as provided by cloud hosts) for asyncpg."""
         if isinstance(value, str):
             if value.startswith("postgres://"):
-                return "postgresql+asyncpg://" + value[len("postgres://"):]
+                return "postgresql+asyncpg://" + value[len("postgres://") :]
             if value.startswith("postgresql://"):
-                return "postgresql+asyncpg://" + value[len("postgresql://"):]
+                return "postgresql+asyncpg://" + value[len("postgresql://") :]
         return value
 
     @property
     def public_url(self) -> str:
-        return (self.webapp_url or self.render_external_url).rstrip("/")
+        return (self.webapp_url or self.public_url_override or self.render_external_url).rstrip("/")
 
     upload_dir: Path = BASE_DIR / "uploads"
     max_upload_size: int = 5 * 1024 * 1024  # 5 MB
