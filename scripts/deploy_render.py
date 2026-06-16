@@ -57,6 +57,22 @@ def find_service(owner_id: str) -> dict | None:
     return None
 
 
+def patch_service_python(service_id: str) -> None:
+    api(
+        "PATCH",
+        f"/services/{service_id}",
+        {
+            "serviceDetails": {
+                "runtime": "python",
+                "envSpecificDetails": {
+                    "buildCommand": "pip install -r requirements.txt",
+                    "startCommand": "python main.py",
+                },
+            }
+        },
+    )
+
+
 def create_service(owner_id: str) -> dict:
     body = {
         "type": "web_service",
@@ -66,21 +82,40 @@ def create_service(owner_id: str) -> dict:
         "branch": "main",
         "autoDeploy": "yes",
         "serviceDetails": {
-            "env": "docker",
+            "runtime": "python",
             "plan": "free",
             "region": "frankfurt",
             "healthCheckPath": "/health",
+            "envSpecificDetails": {
+                "buildCommand": "pip install -r requirements.txt",
+                "startCommand": "python main.py",
+            },
         },
     }
     result = api("POST", "/services", body)
     return result.get("service") or result
 
 
-def set_env_vars(service_id: str) -> None:
+def get_service(service_id: str) -> dict:
+    result = api("GET", f"/services/{service_id}")
+    return result.get("service") or result
+
+
+def service_url(svc: dict) -> str:
+    details = svc.get("serviceDetails") or {}
+    url = details.get("url")
+    if url:
+        return url if url.startswith("http") else f"https://{url}"
+    slug = svc.get("slug") or SERVICE_NAME
+    return f"https://{slug}.onrender.com"
+
+
+def set_env_vars(service_id: str, public_url: str) -> None:
     pairs = {
         "BOT_TOKEN": os.environ["BOT_TOKEN"],
         "ADMIN_ID": os.environ.get("ADMIN_ID", "0"),
         "USE_WEBHOOK": "1",
+        "WEBAPP_URL": public_url,
         "LOG_LEVEL": "INFO",
         "KEEP_ALIVE_INTERVAL_MINUTES": "10",
     }
@@ -89,14 +124,14 @@ def set_env_vars(service_id: str) -> None:
         pairs["WEBHOOK_SECRET"] = wh
     for key, value in pairs.items():
         api(
-            "POST",
-            f"/services/{service_id}/env-vars",
-            {"envVar": {"key": key, "value": value}},
+            "PUT",
+            f"/services/{service_id}/env-vars/{key}",
+            {"value": value},
         )
 
 
 def trigger_deploy(service_id: str) -> None:
-    api("POST", f"/services/{service_id}/deploys", {"clearCache": False})
+    api("POST", f"/services/{service_id}/deploys", {})
 
 
 def main() -> None:
@@ -108,12 +143,13 @@ def main() -> None:
         print("Creating Render service...")
         svc = create_service(owner_id)
     service_id = svc["id"]
+    public_url = service_url(svc)
     print(f"Service id: {service_id}")
-    set_env_vars(service_id)
+    print(f"Public URL: {public_url}")
+    patch_service_python(service_id)
+    set_env_vars(service_id, public_url)
     trigger_deploy(service_id)
-    url = svc.get("serviceDetails", {}).get("url") or f"https://{SERVICE_NAME}.onrender.com"
-    print(f"Deploy triggered. URL (when ready): {url}")
-    print("Mini App button will be set automatically on first successful start.")
+    print(f"Deploy triggered. Mini App: {public_url}")
 
 
 if __name__ == "__main__":

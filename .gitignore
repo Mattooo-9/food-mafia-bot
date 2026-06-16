@@ -6,6 +6,6 @@ venv/
 database/*.db
 uploads/
 frontend/node_modules/
-frontend/dist/
+# frontend/dist/ — коммитим для деплоя на Render (без Node в build)
 tools/
 .DS_Store
