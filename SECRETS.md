@@ -1,49 +1,65 @@
-# Секреты — куда класть
+# Секреты и переменные для надёжного деплоя
 
-## ✅ Уже в GitHub Secrets (Actions)
+## GitHub Secrets (обязательные)
 
 | Secret | Назначение |
 |---|---|
 | `BOT_TOKEN` | Токен Telegram-бота |
-| `ADMIN_ID` | `8017348770` |
-| `WEBHOOK_SECRET` | Отдельный секрет webhook |
+| `ADMIN_ID` | Telegram ID админа |
+| `WEBHOOK_SECRET` | Только `A-Za-z0-9_-` (без `+` и `=`) |
 
-## ⚠️ Нужен один раз для автодеплоя (бесплатно, без карты)
+## GitHub Secrets (хотя бы один бэкенд)
 
-1. Зарегистрируйтесь на **https://render.com** (GitHub login, карта не нужна).
-2. **Account Settings → API Keys** → Create API Key.
-3. Добавьте в GitHub:
-   ```powershell
-   gh secret set RENDER_API_KEY
-   ```
-4. Запустите деплой:
-   ```powershell
-   gh workflow run deploy-render-api
-   ```
+| Secret | Платформа |
+|---|---|
+| `RENDER_API_KEY` | [Render API Keys](https://dashboard.render.com/u/settings#api-keys) |
+| `HF_TOKEN` | [Hugging Face → Settings → Access Tokens](https://huggingface.co/settings/tokens) (write) |
+| `NETLIFY_AUTH_TOKEN` | [Netlify → User settings → Applications](https://app.netlify.com/user/applications#personal-access-tokens) |
 
-Скрипт `scripts/deploy_render.py` создаст free web service + PostgreSQL из `render.yaml` логики, пропишет env и задеплоит.
+## GitHub Variables (рекомендуется)
+
+| Variable | Пример | Зачем |
+|---|---|---|
+| `NETLIFY_URL` | `https://eda-ryadom.netlify.app` | Стабильный URL Mini App (не меняется) |
+| `NETLIFY_SITE_ID` | из Netlify Site settings | Для CLI deploy |
+| `BACKEND_URLS` | `https://food-mafia-bot.onrender.com,https://user-food-mafia-bot.hf.space` | Health-check по приоритету |
+| `HF_SPACE` | `Mattooo-9/food-mafia-bot` | Имя Space на HF |
+| `RENDER_URL` | `https://food-mafia-bot.onrender.com` | Keep-alive |
+
+## Как это работает (каждый push в `main`)
+
+1. **Сборка** Mini App (кэш npm, быстро)
+2. **Параллельно**: Render + Hugging Face
+3. **Health-check** — выбирается живой бэкенд
+4. **Netlify** — статика + прокси `/api`, `/uploads`, `/tg/webhook` на бэкенд
+5. **sync_telegram.py** — кнопка Mini App → Netlify (стабильно), webhook → тот же URL (прокси на бэкенд)
+6. **Keep-alive** каждые 10 мин пингует все URL
 
 ## Локально
 
-Файл `.env` — только на ПК, в git не попадает.
+`.env` — только на ПК, в git не попадает.
 
-## Почему не Railway / Fly.io
+```env
+USE_WEBHOOK=0
+PORT=8001
+WEBAPP_URL=https://your-tunnel.lhr.life
+```
 
-- **Railway** — trial истёк на аккаунте.
-- **Fly.io** — требует карту даже на free tier.
+## Платформы
 
-## Render (рекомендуется, бесплатно)
-
-- Web service free + PostgreSQL free 30 дней
-- `RENDER_EXTERNAL_URL` подставляется сам
-- Webhook + кнопка Mini App настраиваются при старте
+| Платформа | Роль | Карта |
+|---|---|---|
+| **Netlify** | Стабильный Mini App (CDN) | Нет |
+| **Render** | Бэкенд + бот (webhook) | Нет |
+| **Hugging Face Space** | Запасной бэкенд (Docker) | Нет |
+| localhost.run | Только для отладки | Нет |
 
 ## Безопасность
 
-- Токен светился в чате → **/revoke** в @BotFather и обновить секреты.
-- Webhook защищён `X-Telegram-Bot-Api-Secret-Token`.
-- `/docs` отключены в облаке.
+- Токены из чата → `/revoke` в @BotFather, перевыпустить API-ключи
+- Webhook: заголовок `X-Telegram-Bot-Api-Secret-Token`
+- `/docs` отключены при `USE_WEBHOOK=1`
 
 ## Важно
 
-Пока бот в облаке — **не запускайте** `python main.py` локально.
+Пока бот в облаке с webhook — **не запускайте** `python main.py` локально (конфликт с Telegram).

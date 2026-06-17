@@ -51,7 +51,8 @@ class Settings(BaseSettings):
     rate_limit_requests: int = 120
     rate_limit_window_seconds: int = 60
 
-    init_data_max_age_seconds: int = 86400
+    # Comma-separated fallback URLs for health checks (optional).
+    fallback_urls: str = Field(default="", validation_alias="BACKEND_URLS")
     platform_commission_rate: float = 0.01
 
     log_level: str = "INFO"

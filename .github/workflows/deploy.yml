@@ -1,0 +1,207 @@
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-main
+  cancel-in-progress: true
+
+env:
+  RENDER_URL: https://food-mafia-bot.onrender.com
+  HF_SPACE_URL: https://mattooo-9-food-mafia-bot.hf.space
+
+jobs:
+  build:
+    name: Build Mini App
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install & build frontend
+        working-directory: frontend
+        run: npm ci && npm run build
+
+      - name: Upload frontend dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+          retention-days: 3
+
+      - name: Commit built dist (for Render Python-only builds)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add frontend/dist
+          if git diff --staged --quiet; then
+            echo "dist unchanged"
+            exit 0
+          fi
+          git commit -m "chore: rebuild frontend dist [skip ci]"
+          git push
+
+  deploy-render:
+    name: Deploy Render
+    needs: build
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Trigger Render deploy
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          ADMIN_ID: ${{ secrets.ADMIN_ID }}
+          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
+        run: |
+          if [ -z "$RENDER_API_KEY" ]; then
+            echo "RENDER_API_KEY missing — skip"
+            exit 0
+          fi
+          python scripts/deploy_render.py
+
+  deploy-huggingface:
+    name: Deploy Hugging Face
+    needs: build
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install HF hub & deploy Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE: ${{ vars.HF_SPACE }}
+        run: |
+          pip install -q huggingface_hub
+          python scripts/deploy_huggingface.py
+
+  resolve-backend:
+    name: Pick healthy backend
+    needs: [deploy-render, deploy-huggingface]
+    runs-on: ubuntu-latest
+    outputs:
+      backend_url: ${{ steps.pick.outputs.backend_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: pick
+        env:
+          BACKEND_URLS: ${{ vars.BACKEND_URLS }}
+          HEALTH_ATTEMPTS: "12"
+          HEALTH_INTERVAL_SECONDS: "15"
+        run: |
+          URLS="${BACKEND_URLS:-${{ env.RENDER_URL }},${{ env.HF_SPACE_URL }}}"
+          export BACKEND_URLS="$URLS"
+          BACKEND=$(python scripts/health_urls.py || true)
+          if [ -z "$BACKEND" ]; then
+            echo "No healthy backend yet — fallback to Render URL"
+            BACKEND="${{ env.RENDER_URL }}"
+          fi
+          echo "backend_url=$BACKEND" >> "$GITHUB_OUTPUT"
+          echo "Selected backend: $BACKEND"
+
+  deploy-netlify:
+    name: Deploy Netlify (stable Mini App)
+    needs: [build, resolve-backend]
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    outputs:
+      netlify_url: ${{ steps.netlify.outputs.netlify_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download frontend dist
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Write API proxy redirects
+        env:
+          BACKEND_URL: ${{ needs.resolve-backend.outputs.backend_url }}
+        run: python scripts/write_netlify_redirects.py
+
+      - id: netlify
+        name: Deploy to Netlify
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
+        run: |
+          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
+            echo "NETLIFY_AUTH_TOKEN missing — skip Netlify"
+            echo "netlify_url=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          npx --yes netlify-cli@17 deploy --prod --dir=frontend/dist --message "deploy ${{ github.sha }}"
+          URL="${{ vars.NETLIFY_URL }}"
+          if [ -z "$URL" ]; then
+            URL=$(npx --yes netlify-cli@17 status --json | python -c "import json,sys; d=json.load(sys.stdin); print(d.get('url',''))")
+          fi
+          echo "netlify_url=$URL" >> "$GITHUB_OUTPUT"
+          echo "Netlify URL: $URL"
+
+  sync-telegram:
+    name: Sync bot (menu + webhook)
+    needs: [resolve-backend, deploy-netlify]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Point bot to stable Mini App + active backend
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
+          MINI_APP_URL: ${{ needs.deploy-netlify.outputs.netlify_url || vars.NETLIFY_URL || needs.resolve-backend.outputs.backend_url }}
+          WEBHOOK_URL: ${{ needs.deploy-netlify.outputs.netlify_url || vars.NETLIFY_URL || needs.resolve-backend.outputs.backend_url }}
+          SERVICE_URL: ${{ needs.resolve-backend.outputs.backend_url }}
+          USE_WEBHOOK: "1"
+        run: |
+          echo "Mini App: $MINI_APP_URL"
+          echo "Webhook base: $WEBHOOK_URL"
+          echo "Backend: $SERVICE_URL"
+          python scripts/sync_telegram.py
+
+  keepalive-all:
+    name: Ping all endpoints
+    needs: sync-telegram
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+      - name: Health ping
+        env:
+          BACKEND_URLS: ${{ vars.BACKEND_URLS }}
+        run: |
+          URLS="${BACKEND_URLS:-${{ env.RENDER_URL }},${{ env.HF_SPACE_URL }}}"
+          NETLIFY="${{ vars.NETLIFY_URL }}"
+          [ -n "$NETLIFY" ] && URLS="$NETLIFY,$URLS"
+          IFS=',' read -ra ARR <<< "$URLS"
+          for u in "${ARR[@]}"; do
+            u="${u// /}"
+            [ -z "$u" ] && continue
+            echo "Ping $u/health"
+            curl -fsS --max-time 30 "$u/health" || echo "fail: $u"
+          done

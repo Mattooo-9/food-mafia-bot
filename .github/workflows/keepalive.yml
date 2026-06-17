@@ -9,10 +9,20 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Render service
+      - name: Ping all public URLs
         env:
+          BACKEND_URLS: ${{ vars.BACKEND_URLS }}
+          NETLIFY_URL: ${{ vars.NETLIFY_URL }}
           RENDER_URL: ${{ vars.RENDER_URL }}
         run: |
-          URL="${RENDER_URL:-https://food-mafia-bot.onrender.com}"
-          echo "Pinging $URL/health"
-          curl -s -o /dev/null -w "status %{http_code}\n" --max-time 120 "$URL/health" || true
+          RENDER="${RENDER_URL:-https://food-mafia-bot.onrender.com}"
+          HF="${HF_SPACE_URL:-https://mattooo-9-food-mafia-bot.hf.space}"
+          URLS="${BACKEND_URLS:-$RENDER,$HF}"
+          [ -n "$NETLIFY_URL" ] && URLS="$NETLIFY_URL,$URLS"
+          IFS=',' read -ra ARR <<< "$URLS"
+          for u in "${ARR[@]}"; do
+            u="${u// /}"
+            [ -z "$u" ] && continue
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 60 "$u/health" || echo "000")
+            echo "$u -> $code"
+          done

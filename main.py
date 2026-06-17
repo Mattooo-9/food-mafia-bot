@@ -21,9 +21,9 @@ WEBHOOK_PATH = "/tg/webhook"
 
 
 def webhook_secret() -> str:
-    if settings.webhook_secret:
-        return settings.webhook_secret
-    return hashlib.sha256(settings.bot_token.encode()).hexdigest()[:32]
+    raw = settings.webhook_secret or hashlib.sha256(settings.bot_token.encode()).hexdigest()[:32]
+    # Telegram allows only A-Z, a-z, 0-9, _, -
+    return "".join(c for c in raw if c.isalnum() or c in "_-")[:256]
 
 
 def attach_webhook_route(app: FastAPI, dp: Dispatcher) -> None:

@@ -111,11 +111,12 @@ def service_url(svc: dict) -> str:
 
 
 def set_env_vars(service_id: str, public_url: str) -> None:
+    webapp = os.environ.get("WEBAPP_URL", public_url).rstrip("/")
     pairs = {
         "BOT_TOKEN": os.environ["BOT_TOKEN"],
         "ADMIN_ID": os.environ.get("ADMIN_ID", "0"),
         "USE_WEBHOOK": "1",
-        "WEBAPP_URL": public_url,
+        "WEBAPP_URL": webapp,
         "LOG_LEVEL": "INFO",
         "KEEP_ALIVE_INTERVAL_MINUTES": "10",
     }

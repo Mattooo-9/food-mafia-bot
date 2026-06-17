@@ -39,6 +39,22 @@ python main.py
 
 API поднимется на `http://localhost:8000` и сам раздаёт собранный Mini App из `frontend/dist`.
 
+## Деплой (надёжно, 3 платформы + автосинхронизация бота)
+
+Каждый **push в `main`** запускает [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml):
+
+| Платформа | Роль |
+|---|---|
+| **Netlify** | Стабильный URL Mini App (CDN), прокси API на живой бэкенд |
+| **Render** | Основной бэкенд + бот (webhook) |
+| **Hugging Face Space** | Запасной бэкенд (Docker) |
+
+После деплоя CI сам выбирает здоровый бэкенд, публикует Mini App и вызывает `scripts/sync_telegram.py` (кнопка + webhook).
+
+Секреты и переменные — в [`SECRETS.md`](SECRETS.md).
+
+Keep-alive пингует все URL каждые 10 минут.
+
 ## Деплой в облако (Render, бесплатно, 24/7)
 
 Проект готов к развёртыванию в один клик — в репозитории есть `render.yaml` (web-сервис + PostgreSQL):

@@ -1,5 +1,6 @@
 name: deploy-render-api
 
+# Устарело — используйте workflow "deploy" (push в main).
 on:
   workflow_dispatch:
 
@@ -8,8 +9,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Deploy to Render (free tier)
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Deploy to Render
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}

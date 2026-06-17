@@ -1,0 +1,13 @@
+[build]
+  command = "cd frontend && npm ci && npm run build"
+  publish = "frontend/dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# API proxy rules are generated into frontend/dist/_redirects at deploy time (CI).
+# Fallback SPA routing if _redirects missing:
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
