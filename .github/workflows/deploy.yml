@@ -40,6 +40,13 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Make GHCR image public (Render pulls without credentials)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api --method PATCH "/user/packages/container/food-mafia-bot/visibility" \
+            -f visibility=public || true
+
   deploy-render:
     name: Deploy Render (pre-built image)
     needs: build-push

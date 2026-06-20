@@ -27,7 +27,9 @@ def main() -> None:
     deploys = api(f"/services/{SID}/deploys?limit=3")
     for item in deploys:
         d = item.get("deploy", item)
-        print("deploy:", d.get("status"), d.get("finishedAt"), d.get("commit", {}).get("message", "")[:60])
+        commit = d.get("commit") or {}
+        msg = (commit.get("message") or "")[:60]
+        print("deploy:", d.get("status"), d.get("finishedAt"), msg)
 
 
 if __name__ == "__main__":
