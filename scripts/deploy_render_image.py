@@ -92,6 +92,13 @@ def main() -> None:
     for key, value in pairs.items():
         api("PUT", f"/services/{service_id}/env-vars/{key}", {"value": value})
 
+    # Remove stale Postgres URL from old blueprint — use SQLite in container.
+    try:
+        api("DELETE", f"/services/{service_id}/env-vars/DATABASE_URL")
+        print("Removed legacy DATABASE_URL (using SQLite in container)")
+    except SystemExit:
+        pass
+
     # deploy_only — pull image, no build
     api("POST", f"/services/{service_id}/deploys", {"deployMode": "deploy_only"})
     print(f"Deploy triggered (image pull): {public_url}")

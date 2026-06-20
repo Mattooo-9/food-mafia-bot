@@ -129,6 +129,10 @@ def set_env_vars(service_id: str, public_url: str) -> None:
             f"/services/{service_id}/env-vars/{key}",
             {"value": value},
         )
+    try:
+        api("DELETE", f"/services/{service_id}/env-vars/DATABASE_URL")
+    except SystemExit:
+        pass
 
 
 def trigger_deploy(service_id: str) -> None:
