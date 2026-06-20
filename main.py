@@ -79,6 +79,23 @@ async def setup_webhook() -> None:
     logger.info("Bot started (webhook): @%s -> %s", me.username, url)
 
 
+async def setup_webhook_safe() -> None:
+    if not settings.public_url:
+        return
+    try:
+        await setup_webhook()
+    except TelegramAPIError as exc:
+        logger.error("Webhook setup failed (API still running): %s", exc)
+
+
+async def cloud_bot_setup() -> None:
+    """Configure Telegram after API is up — must not block health checks."""
+    await asyncio.sleep(2)
+    await apply_menu_button()
+    if settings.use_webhook:
+        await setup_webhook_safe()
+
+
 async def keep_alive_loop() -> None:
     """Ping our own public URL so free-tier hosting never goes to sleep."""
     import aiohttp
@@ -103,18 +120,17 @@ async def main() -> None:
     dp = create_dispatcher()
     attach_webhook_route(app, dp)
 
-    await apply_menu_button()
-
     try:
         if settings.use_webhook and settings.public_url:
-            await setup_webhook()
-            tasks = [run_api(app)]
+            tasks: list = [run_api(app), cloud_bot_setup()]
             if settings.keep_alive_interval_minutes > 0:
                 tasks.append(keep_alive_loop())
             await asyncio.gather(*tasks)
+        elif settings.use_webhook:
+            logger.warning("USE_WEBHOOK=1, но публичный URL не задан — запускаю polling")
+            await asyncio.gather(run_api(app), run_polling(dp))
         else:
-            if settings.use_webhook:
-                logger.warning("USE_WEBHOOK=1, но публичный URL не задан — запускаю polling")
+            await apply_menu_button()
             await asyncio.gather(run_api(app), run_polling(dp))
     finally:
         await bot.session.close()

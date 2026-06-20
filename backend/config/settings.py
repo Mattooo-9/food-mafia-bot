@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     # Cloud: webhook вместо polling (Render/Railway ставят USE_WEBHOOK=1).
     use_webhook: bool = False
     # Render.com подставляет сам; Railway — задайте WEBAPP_URL или PUBLIC_URL.
-    render_external_url: str = ""
+    render_external_url: str = Field(default="", validation_alias="RENDER_EXTERNAL_URL")
     public_url_override: str = Field(default="", validation_alias="PUBLIC_URL")
     keep_alive_interval_minutes: int = 10
 
