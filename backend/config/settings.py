@@ -1,9 +1,21 @@
 from pathlib import Path
+import os
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
+DATA_DIR = Path("/data") if Path("/data").is_dir() else BASE_DIR / "database"
+
+
+def _hf_space_url() -> str:
+    """Hugging Face Docker Space: SPACE_ID=owner/name -> https://owner-name.hf.space"""
+    space_id = os.environ.get("SPACE_ID", "").strip()
+    if not space_id or "/" not in space_id:
+        return ""
+    owner, name = space_id.split("/", 1)
+    slug = name.lower().replace("_", "-")
+    return f"https://{owner.lower()}-{slug}.hf.space"
 
 
 class Settings(BaseSettings):
@@ -26,7 +38,9 @@ class Settings(BaseSettings):
     public_url_override: str = Field(default="", validation_alias="PUBLIC_URL")
     keep_alive_interval_minutes: int = 10
 
-    database_url: str = f"sqlite+aiosqlite:///{(BASE_DIR / 'database' / 'food_mafia.db').as_posix()}"
+    database_url: str = Field(
+        default_factory=lambda: f"sqlite+aiosqlite:///{(DATA_DIR / 'food_mafia.db').as_posix()}"
+    )
 
     host: str = "0.0.0.0"
     port: int = Field(default=8000, validation_alias="PORT")
@@ -43,7 +57,15 @@ class Settings(BaseSettings):
 
     @property
     def public_url(self) -> str:
-        return (self.webapp_url or self.public_url_override or self.render_external_url).rstrip("/")
+        for candidate in (
+            self.webapp_url,
+            self.public_url_override,
+            self.render_external_url,
+            _hf_space_url(),
+        ):
+            if candidate:
+                return candidate.rstrip("/")
+        return ""
 
     upload_dir: Path = BASE_DIR / "uploads"
     max_upload_size: int = 5 * 1024 * 1024  # 5 MB
