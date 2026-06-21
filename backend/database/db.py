@@ -76,6 +76,18 @@ async def _migrate_sqlite(conn) -> None:
         )
         logger.info("Added users.referral_welcome_claimed")
 
+    # Users with deliveries before referral rollout should not get retroactive welcome bonus.
+    conn.execute(
+        text(
+            """
+            UPDATE users SET referral_welcome_claimed = 1
+            WHERE referral_welcome_claimed = 0 AND id IN (
+                SELECT DISTINCT buyer_id FROM orders WHERE status = 'DELIVERED'
+            )
+            """
+        )
+    )
+
 
 async def init_db() -> None:
     from backend import models  # noqa: F401  (register all models in metadata)

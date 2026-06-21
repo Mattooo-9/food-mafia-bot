@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { api, ApiError, calcReferralDiscount, formatDistance, formatPrice, REFERRAL_MAX_DISCOUNT_PERCENT } from "../api";
+import { api, ApiError, calcReferralDiscount, formatDistance, formatPrice } from "../api";
 import Spinner from "../components/Spinner";
 import Stars from "../components/Stars";
 import { PAYMENT_METHODS } from "../constants";
 import { haptic, showAlert } from "../telegram";
-import type { Food, PaymentMethod, Review } from "../types";
+import type { Food, PaymentMethod, ReferralInfo, Review } from "../types";
 import { useUser } from "../UserContext";
 
 export default function FoodPage() {
-  const { user } = useUser();
+  const { user, refresh } = useUser();
   const { id } = useParams();
   const navigate = useNavigate();
   const [food, setFood] = useState<Food | null>(null);
@@ -20,6 +20,11 @@ export default function FoodPage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [referral, setReferral] = useState<ReferralInfo | null>(null);
+
+  useEffect(() => {
+    void api.getReferral().then(setReferral).catch(() => setReferral(null));
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -54,6 +59,7 @@ export default function FoodPage() {
     try {
       await api.createOrder(food.id, quantity, comment, paymentMethod);
       haptic("success");
+      await refresh();
       showAlert("Заказ оформлен! Расчёт — при получении.");
       navigate("/orders");
     } catch (e) {
@@ -75,11 +81,11 @@ export default function FoodPage() {
   };
 
   const maxQty = Math.max(food.portions, 0);
-  const gross = food.price * quantity;
-  const referralDiscount = user
-    ? calcReferralDiscount(user.referral_balance, gross, REFERRAL_MAX_DISCOUNT_PERCENT)
-    : 0;
-  const total = gross - referralDiscount;
+  const gross = Math.round(food.price * quantity * 100) / 100;
+  const maxDiscountPercent = referral?.max_discount_percent ?? 15;
+  const balance = user?.referral_balance ?? referral?.balance ?? 0;
+  const referralDiscount = calcReferralDiscount(balance, gross, maxDiscountPercent);
+  const total = Math.round((gross - referralDiscount) * 100) / 100;
 
   return (
     <div className="page">

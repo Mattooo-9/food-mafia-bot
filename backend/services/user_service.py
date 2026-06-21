@@ -33,6 +33,8 @@ async def get_or_create_user(
         changed = True
     if changed:
         await session.commit()
+    if ref_code and user.referred_by_id is None:
+        await referral_service.attach_referrer(session, user, ref_code)
     await referral_service.ensure_referral_code(session, user)
     return user, False
 

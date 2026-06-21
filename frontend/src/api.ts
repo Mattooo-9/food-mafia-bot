@@ -121,12 +121,13 @@ export function calcReferralDiscount(
   gross: number,
   maxPercent: number,
 ): number {
-  const cap = gross * (maxPercent / 100);
-  const maxAllowed = Math.max(gross - 1, 0);
-  return Math.round(Math.min(balance, cap, maxAllowed) * 100) / 100;
+  const g = Math.round(gross * 100) / 100;
+  const bal = balance || 0;
+  if (g <= 0 || bal <= 0) return 0;
+  const cap = Math.round(g * (maxPercent / 100) * 100) / 100;
+  const maxAllowed = Math.round(Math.max(g - 1, 0) * 100) / 100;
+  return Math.round(Math.min(bal, cap, maxAllowed) * 100) / 100;
 }
-
-export const REFERRAL_MAX_DISCOUNT_PERCENT = 15;
 
 export function formatPrice(price: number): string {
   return `${price.toLocaleString("ru-RU", { maximumFractionDigits: 2 })} ₽`;

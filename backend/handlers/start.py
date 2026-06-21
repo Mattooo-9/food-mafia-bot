@@ -63,7 +63,7 @@ async def cmd_start(message: Message, command: CommandObject) -> None:
         "🍲 Открой приложение — поиск, заказы, оплата, рейтинги.\n"
         "📍 Отправь геолокацию, чтобы видеть блюда рядом."
     )
-    if is_new and user.referred_by_id:
+    if user.referred_by_id and ref_code:
         text += f"\n\n🎁 Бонус {settings.referral_referee_bonus:.0f} ₽ после первого заказа!"
 
     markup = webapp_keyboard()

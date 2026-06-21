@@ -8,6 +8,7 @@ from aiogram.exceptions import TelegramAPIError
 from aiogram.types import BotCommand, MenuButtonWebApp, Update, WebAppInfo
 from fastapi import FastAPI, HTTPException, Request
 
+from backend.api.app import create_app
 from backend.bot_info import set_bot_username
 from backend.bot_instance import bot
 from backend.config import settings

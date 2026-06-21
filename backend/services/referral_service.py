@@ -2,12 +2,12 @@ import logging
 import secrets
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.bot_info import get_bot_username
 from backend.config import settings
 from backend.models import Order, OrderStatus, User
-from backend.services import notification_service
 
 logger = logging.getLogger(__name__)
 
@@ -19,22 +19,28 @@ def _generate_code() -> str:
 async def ensure_referral_code(session: AsyncSession, user: User) -> str:
     if user.referral_code:
         return user.referral_code
-    for _ in range(8):
+    for _ in range(12):
         code = _generate_code()
-        exists = await session.execute(select(User.id).where(User.referral_code == code))
-        if exists.first() is None:
-            user.referral_code = code
+        user.referral_code = code
+        try:
             await session.commit()
             return code
+        except IntegrityError:
+            await session.rollback()
+            user = await session.get(User, user.id)
+            if user is None:
+                raise
+            if user.referral_code:
+                return user.referral_code
     raise RuntimeError("Could not generate unique referral code")
 
 
 async def attach_referrer(session: AsyncSession, user: User, ref_code: str) -> bool:
-    """Link a new user to referrer. Returns True if attached."""
+    """Link user to referrer once. Returns True if attached."""
     if user.referred_by_id is not None or not ref_code:
         return False
     code = ref_code.strip().upper()
-    if not code:
+    if not code or user.referral_code == code:
         return False
     result = await session.execute(select(User).where(User.referral_code == code))
     referrer = result.scalar_one_or_none()
@@ -65,7 +71,7 @@ async def get_referral_info(session: AsyncSession, user: User) -> dict:
     return {
         "code": code,
         "link": build_referral_link(code),
-        "balance": round(user.referral_balance, 2),
+        "balance": round(user.referral_balance or 0, 2),
         "invited_count": await get_invited_count(session, user.id),
         "referrer_bonus": settings.referral_referrer_bonus,
         "referee_bonus": settings.referral_referee_bonus,
@@ -74,59 +80,53 @@ async def get_referral_info(session: AsyncSession, user: User) -> dict:
 
 
 def calc_referral_discount(buyer: User, gross: float) -> float:
-    if gross <= 0 or buyer.referral_balance <= 0:
+    gross = round(gross, 2)
+    balance = buyer.referral_balance or 0
+    if gross <= 0 or balance <= 0:
         return 0.0
     cap = round(gross * settings.referral_max_discount_rate, 2)
-    return round(min(buyer.referral_balance, cap), 2)
+    max_allowed = round(max(gross - 1.0, 0.0), 2)
+    return round(min(balance, cap, max_allowed), 2)
 
 
-async def apply_referral_discount(session: AsyncSession, buyer: User, gross: float) -> float:
+def apply_referral_discount(buyer: User, gross: float) -> float:
     discount = calc_referral_discount(buyer, gross)
     if discount > 0:
-        buyer.referral_balance = round(buyer.referral_balance - discount, 2)
+        buyer.referral_balance = round((buyer.referral_balance or 0) - discount, 2)
     return discount
 
 
 async def restore_referral_discount(session: AsyncSession, buyer: User, discount: float) -> None:
     if discount > 0:
-        buyer.referral_balance = round(buyer.referral_balance + discount, 2)
+        buyer.referral_balance = round((buyer.referral_balance or 0) + discount, 2)
 
 
-async def on_order_delivered(session: AsyncSession, order: Order) -> None:
-    """First delivered order of a referred buyer triggers bonuses."""
+async def on_order_delivered(session: AsyncSession, order: Order) -> tuple[User, User | None, float, float] | None:
+    """First delivery: referral bonuses. Returns notify payload or None."""
     buyer = await session.get(User, order.buyer_id)
     if buyer is None or buyer.referral_welcome_claimed:
-        return
-
-    delivered_count = await session.execute(
-        select(func.count())
-        .select_from(Order)
-        .where(
-            Order.buyer_id == buyer.id,
-            Order.status == OrderStatus.DELIVERED.value,
-        )
-    )
-    if int(delivered_count.scalar_one()) != 1:
-        return
+        return None
 
     buyer.referral_welcome_claimed = True
-    buyer.referral_balance = round(buyer.referral_balance + settings.referral_referee_bonus, 2)
 
-    referrer: User | None = None
-    if buyer.referred_by_id:
-        referrer = await session.get(User, buyer.referred_by_id)
-        if referrer and referrer.id != buyer.id:
-            referrer.referral_balance = round(
-                referrer.referral_balance + settings.referral_referrer_bonus, 2
-            )
+    if not buyer.referred_by_id:
+        return None
 
-    await session.flush()
-    await notification_service.notify_referral_rewards(
-        buyer, referrer, settings.referral_referee_bonus, settings.referral_referrer_bonus
+    buyer.referral_balance = round(
+        (buyer.referral_balance or 0) + settings.referral_referee_bonus, 2
     )
+
+    referrer: User | None = await session.get(User, buyer.referred_by_id)
+    if referrer and referrer.id != buyer.id:
+        referrer.referral_balance = round(
+            (referrer.referral_balance or 0) + settings.referral_referrer_bonus, 2
+        )
+    else:
+        referrer = None
+
     logger.info(
-        "Referral rewards: buyer=%s referee_bonus=%.0f referrer=%s",
+        "Referral rewards: buyer=%s referrer=%s",
         buyer.id,
-        settings.referral_referee_bonus,
         referrer.id if referrer else None,
     )
+    return (buyer, referrer, settings.referral_referee_bonus, settings.referral_referrer_bonus)

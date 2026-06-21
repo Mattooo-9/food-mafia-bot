@@ -68,12 +68,8 @@ async def create_order(
         raise OrderError("Неизвестный способ оплаты")
 
     gross = round(food.price * quantity, 2)
-    referral_discount = referral_service.calc_referral_discount(buyer, gross)
-    max_discount = round(max(gross - 1.0, 0.0), 2)
-    referral_discount = round(min(referral_discount, max_discount), 2)
+    referral_discount = referral_service.apply_referral_discount(buyer, gross)
     total_price = round(gross - referral_discount, 2)
-    if referral_discount > 0:
-        buyer.referral_balance = round(buyer.referral_balance - referral_discount, 2)
 
     order = Order(
         buyer_id=buyer.id,
@@ -132,16 +128,21 @@ async def change_status(
                 session, order.buyer, order.referral_discount
             )
 
+    referral_notify = None
     if new_status == OrderStatus.DELIVERED:
         food = await session.get(Food, order.food_id)
         if food is not None:
             food.orders_count += 1
         order.payment_status = PaymentStatus.PAID.value
         await _accrue_platform_commission(session, order)
-        await referral_service.on_order_delivered(session, order)
+        referral_notify = await referral_service.on_order_delivered(session, order)
 
     await session.commit()
     order = await get_order(session, order_id)
+
+    if referral_notify is not None:
+        buyer_n, referrer_n, ref_bonus, inv_bonus = referral_notify
+        await notification_service.notify_referral_rewards(buyer_n, referrer_n, ref_bonus, inv_bonus)
 
     await notification_service.notify_buyer_status(order, order.food, order.buyer)
     if is_buyer and not is_cook:

@@ -55,6 +55,10 @@ def main() -> None:
     if not mini_app_url:
         raise SystemExit("MINI_APP_URL or SERVICE_URL required")
 
+    info = tg("getMe")
+    if info.get("ok") and info.get("result", {}).get("username"):
+        print("bot username:", info["result"]["username"])
+
     menu = tg(
         "setChatMenuButton",
         {
