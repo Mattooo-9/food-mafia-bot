@@ -43,12 +43,20 @@ def pick_url(env_key: str, fallback_key: str) -> str:
     return os.environ.get(fallback_key, "").strip().rstrip("/")
 
 
+def with_cache_bust(url: str) -> str:
+    version = os.environ.get("APP_VERSION", "").strip()
+    if not version:
+        return url
+    sep = "&" if "?" in url else "?"
+    return f"{url}{sep}v={version}"
+
+
 def main() -> None:
     if not os.environ.get("BOT_TOKEN"):
         raise SystemExit("BOT_TOKEN required")
 
     # Mini App: stable Netlify/CDN URL if set, else primary backend.
-    mini_app_url = pick_url("MINI_APP_URL", "SERVICE_URL")
+    mini_app_url = with_cache_bust(pick_url("MINI_APP_URL", "SERVICE_URL"))
     # Webhook: can be same host (proxied) or direct backend.
     webhook_base = pick_url("WEBHOOK_URL", "SERVICE_URL") or mini_app_url
 

@@ -58,7 +58,13 @@ def create_app() -> FastAPI:
                 and Path(FRONTEND_DIST).resolve() in candidate.parents
             ):
                 return FileResponse(candidate)
-            return FileResponse(FRONTEND_DIST / "index.html")
+            return FileResponse(
+                FRONTEND_DIST / "index.html",
+                headers={
+                    "Cache-Control": "no-cache, no-store, must-revalidate",
+                    "Pragma": "no-cache",
+                },
+            )
     else:
         logger.warning("frontend/dist not found — Mini App static files are not served")
 

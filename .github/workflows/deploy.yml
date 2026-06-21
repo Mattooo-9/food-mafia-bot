@@ -101,8 +101,9 @@ jobs:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
           BACKEND_URLS: ${{ vars.BACKEND_URLS }}
-          HEALTH_ATTEMPTS: "18"
-          HEALTH_INTERVAL_SECONDS: "20"
+          APP_VERSION: ${{ github.sha }}
+          HEALTH_ATTEMPTS: "24"
+          HEALTH_INTERVAL_SECONDS: "15"
         run: |
           URLS="${BACKEND_URLS:-${{ env.PUBLIC_URL }},https://mattooo-9-food-mafia-bot.hf.space}"
           export BACKEND_URLS="$URLS"
@@ -111,7 +112,7 @@ jobs:
           export WEBHOOK_URL="$SERVICE_URL"
           export SERVICE_URL
           export USE_WEBHOOK=1
-          echo "Using $SERVICE_URL"
+          echo "Using $SERVICE_URL (app v=${APP_VERSION:0:7})"
           python scripts/sync_telegram.py
 
   keepalive:

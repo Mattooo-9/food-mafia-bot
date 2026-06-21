@@ -100,8 +100,22 @@ def main() -> None:
         pass
 
     # deploy_only — pull image, no build
-    api("POST", f"/services/{service_id}/deploys", {"deployMode": "deploy_only"})
-    print(f"Deploy triggered (image pull): {public_url}")
+    deploy = api("POST", f"/services/{service_id}/deploys", {"deployMode": "deploy_only"})
+    deploy_id = (deploy.get("deploy") or deploy).get("id")
+    print(f"Deploy triggered (image pull): {public_url} deploy={deploy_id}")
+
+    if deploy_id:
+        import time
+
+        for attempt in range(1, 37):
+            info = api("GET", f"/services/{service_id}/deploys/{deploy_id}")
+            status = (info.get("deploy") or info).get("status", "")
+            print(f"deploy status: {status} ({attempt}/36)")
+            if status == "live":
+                break
+            if status in ("build_failed", "update_failed", "canceled", "deactivated"):
+                raise SystemExit(f"Render deploy failed: {status}")
+            time.sleep(10)
 
 
 if __name__ == "__main__":
