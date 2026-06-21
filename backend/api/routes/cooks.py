@@ -16,11 +16,12 @@ async def list_cooks(
     session: SessionDep,
     max_distance_m: float | None = Query(default=None, ge=100, le=100_000),
     min_rating: float | None = Query(default=None, ge=0, le=5),
+    q: str | None = Query(default=None, max_length=128),
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
 ) -> list[CookOut]:
     items = await food_service.search_cooks(
-        session, user, max_distance_m=max_distance_m, min_rating=min_rating, limit=limit, offset=offset
+        session, user, q=q, max_distance_m=max_distance_m, min_rating=min_rating, limit=limit, offset=offset
     )
     favorite_ids = await favorite_service.get_favorite_cook_ids(session, user)
     subscribed_ids = await subscription_service.get_subscription_cook_ids(session, user)

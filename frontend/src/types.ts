@@ -1,3 +1,6 @@
+export type PaymentMethod = "CASH" | "TRANSFER" | "CARD";
+export type PaymentStatus = "PENDING" | "PAID";
+
 export interface User {
   id: number;
   tg_id: number;
@@ -59,6 +62,8 @@ export interface Order {
   total_price: number;
   status: OrderStatus;
   comment: string;
+  payment_method: PaymentMethod;
+  payment_status: PaymentStatus;
   created_at: string;
   food_name: string;
   food_photo: string | null;
@@ -80,6 +85,7 @@ export type FeedType = "nearby" | "new" | "popular" | "cheap" | "fast";
 export interface FoodFilters {
   feed: FeedType;
   category: string | null;
+  q: string;
   max_distance_m: number | null;
   price_min: number | null;
   price_max: number | null;

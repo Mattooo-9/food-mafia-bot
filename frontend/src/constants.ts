@@ -1,4 +1,22 @@
-import type { FeedType, OrderStatus } from "./types";
+import type { FeedType, OrderStatus, PaymentMethod, PaymentStatus } from "./types";
+
+/** Способы оплаты — по алфавиту (ru). */
+export const PAYMENT_METHODS: { id: PaymentMethod; label: string }[] = [
+  { id: "CARD" as PaymentMethod, label: "Картой при получении" },
+  { id: "CASH" as PaymentMethod, label: "Наличные" },
+  { id: "TRANSFER" as PaymentMethod, label: "Перевод" },
+].sort((a, b) => a.label.localeCompare(b.label, "ru"));
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  CARD: "Картой при получении",
+  CASH: "Наличные",
+  TRANSFER: "Перевод",
+};
+
+export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
+  PAID: "Оплачен",
+  PENDING: "Ожидает оплаты",
+};
 
 /** Ленты — по алфавиту (ru). */
 export const FEEDS: { id: FeedType; label: string }[] = [

@@ -14,7 +14,8 @@ router = APIRouter(tags=["orders"])
 async def create_order(payload: OrderIn, user: CurrentUser, session: SessionDep) -> OrderOut:
     try:
         order = await order_service.create_order(
-            session, user, payload.food_id, payload.quantity, payload.comment
+            session, user, payload.food_id, payload.quantity, payload.comment,
+            payment_method=payload.payment_method.value,
         )
     except OrderError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

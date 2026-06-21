@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from backend.models import FOOD_CATEGORIES, OrderStatus
+from backend.models import FOOD_CATEGORIES, OrderStatus, PaymentMethod
 
 
 class LocationIn(BaseModel):
@@ -98,6 +98,7 @@ class OrderIn(BaseModel):
     food_id: int
     quantity: int = Field(ge=1, le=100)
     comment: str = Field(default="", max_length=512)
+    payment_method: PaymentMethod = PaymentMethod.CASH
 
 
 class OrderStatusIn(BaseModel):
@@ -115,6 +116,8 @@ class OrderOut(BaseModel):
     total_price: float
     status: str
     comment: str
+    payment_method: str
+    payment_status: str
     created_at: datetime
     food_name: str = ""
     food_photo: str | None = None

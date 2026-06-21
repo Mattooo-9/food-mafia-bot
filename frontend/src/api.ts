@@ -1,5 +1,5 @@
 import { getInitData } from "./telegram";
-import type { Cook, Food, FoodFilters, Order, OrderStatus, Review, User } from "./types";
+import type { Cook, Food, FoodFilters, Order, OrderStatus, PaymentMethod, Review, User } from "./types";
 
 export class ApiError extends Error {
   status: number;
@@ -45,6 +45,7 @@ export const api = {
 
   getFoods: (filters: FoodFilters) => {
     const params = new URLSearchParams({ feed: filters.feed });
+    if (filters.q) params.set("q", filters.q);
     if (filters.category) params.set("category", filters.category);
     if (filters.max_distance_m != null) params.set("max_distance_m", String(filters.max_distance_m));
     if (filters.price_min != null) params.set("price_min", String(filters.price_min));
@@ -54,8 +55,9 @@ export const api = {
   },
   getFood: (id: number) => request<Food>(`/api/foods/${id}`),
 
-  getCooks: (maxDistanceM: number | null, minRating: number | null) => {
+  getCooks: (maxDistanceM: number | null, minRating: number | null, q = "") => {
     const params = new URLSearchParams();
+    if (q) params.set("q", q);
     if (maxDistanceM != null) params.set("max_distance_m", String(maxDistanceM));
     if (minRating != null) params.set("min_rating", String(minRating));
     return request<Cook[]>(`/api/cooks?${params}`);
@@ -71,8 +73,11 @@ export const api = {
     request<Food>(`/api/cook/foods/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   deleteFood: (id: number) => request<{ ok: boolean }>(`/api/cook/foods/${id}`, { method: "DELETE" }),
 
-  createOrder: (food_id: number, quantity: number, comment: string) =>
-    request<Order>("/api/orders", { method: "POST", body: JSON.stringify({ food_id, quantity, comment }) }),
+  createOrder: (food_id: number, quantity: number, comment: string, payment_method: PaymentMethod) =>
+    request<Order>("/api/orders", {
+      method: "POST",
+      body: JSON.stringify({ food_id, quantity, comment, payment_method }),
+    }),
   getMyOrders: () => request<Order[]>("/api/orders"),
   getCookOrders: () => request<Order[]>("/api/cook/orders"),
   changeOrderStatus: (id: number, status: OrderStatus) =>

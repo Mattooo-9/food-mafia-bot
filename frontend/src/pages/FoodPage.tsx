@@ -2,34 +2,46 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, ApiError, formatDistance, formatPrice } from "../api";
 import Spinner from "../components/Spinner";
+import Stars from "../components/Stars";
+import { PAYMENT_METHODS } from "../constants";
 import { haptic, showAlert } from "../telegram";
-import type { Food } from "../types";
+import type { Food, PaymentMethod, Review } from "../types";
 
 export default function FoodPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [food, setFood] = useState<Food | null>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [comment, setComment] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    api
-      .getFood(Number(id))
-      .then(setFood)
-      .catch(() => setFood(null))
-      .finally(() => setLoading(false));
+    void (async () => {
+      try {
+        const foodData = await api.getFood(Number(id));
+        setFood(foodData);
+        const reviewsData = await api.getCookReviews(foodData.cook_id);
+        setReviews(reviewsData.slice(0, 3));
+      } catch {
+        setFood(null);
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [id]);
 
   if (loading) return <Spinner />;
   if (!food) {
     return (
       <div className="empty">
-        <span className="emoji">😕</span>Блюдо не найдено
+        <span className="emoji">😕</span>
+        Блюдо не найдено
       </div>
     );
   }
@@ -38,9 +50,9 @@ export default function FoodPage() {
     setSubmitting(true);
     setError(null);
     try {
-      await api.createOrder(food.id, quantity, comment);
+      await api.createOrder(food.id, quantity, comment, paymentMethod);
       haptic("success");
-      showAlert("Заказ оформлен! Повар получит уведомление.");
+      showAlert("Заказ оформлен! Расчёт — при получении.");
       navigate("/orders");
     } catch (e) {
       haptic("error");
@@ -101,15 +113,29 @@ export default function FoodPage() {
         <div className="cook-avatar">👨‍🍳</div>
         <div className="food-info">
           <div className="food-name">{food.cook_name ?? "Повар"}</div>
+          <Stars rating={food.cook_rating} />
           <div className="food-meta">
-            {food.cook_rating > 0 && <span>⭐ {food.cook_rating.toFixed(1)}</span>}
             <span className={`badge ${food.cook_is_online ? "online" : "offline"}`}>
-              {food.cook_is_online ? "● онлайн" : "○ оффлайн"}
+              {food.cook_is_online ? "онлайн" : "оффлайн"}
             </span>
           </div>
-          <span className="hint">Открыть профиль повара →</span>
         </div>
       </div>
+
+      {reviews.length > 0 && (
+        <>
+          <h2 className="section-title">Отзывы</h2>
+          {reviews.map((review) => (
+            <div className="card" key={review.id}>
+              <div className="row between">
+                <strong>{review.buyer_name ?? "Покупатель"}</strong>
+                <span className="stars">{"★".repeat(review.rating)}</span>
+              </div>
+              {review.text && <p style={{ margin: "6px 0 0" }}>{review.text}</p>}
+            </div>
+          ))}
+        </>
+      )}
 
       {maxQty > 0 && (
         <div className="card">
@@ -121,17 +147,35 @@ export default function FoodPage() {
               <button onClick={() => setQuantity((q) => Math.min(maxQty, q + 1))}>+</button>
             </div>
           </div>
+
           <div className="field" style={{ marginTop: 12 }}>
-            <label>Комментарий к заказу</label>
+            <label>Способ оплаты</label>
+            <div className="chips" style={{ paddingBottom: 0 }}>
+              {PAYMENT_METHODS.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  className={`chip ${paymentMethod === m.id ? "active" : ""}`}
+                  onClick={() => setPaymentMethod(m.id)}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="field">
+            <label>Комментарий</label>
             <textarea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              placeholder="Например: без лука, заберу в 18:00"
+              placeholder="Время выдачи, пожелания"
               maxLength={512}
             />
           </div>
+
           <button className="btn" disabled={submitting} onClick={() => void order()}>
-            {submitting ? "Оформляем..." : `Заказать за ${formatPrice(food.price * quantity)}`}
+            {submitting ? "Оформляем..." : `Заказать · ${formatPrice(food.price * quantity)}`}
           </button>
           {error && <div className="error-text">{error}</div>}
         </div>

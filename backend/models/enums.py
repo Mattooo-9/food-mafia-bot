@@ -10,6 +10,29 @@ class OrderStatus(str, Enum):
     CANCELLED = "CANCELLED"
 
 
+class PaymentMethod(str, Enum):
+    CARD = "CARD"
+    CASH = "CASH"
+    TRANSFER = "TRANSFER"
+
+
+class PaymentStatus(str, Enum):
+    PAID = "PAID"
+    PENDING = "PENDING"
+
+
+PAYMENT_METHOD_LABELS: dict[str, str] = {
+    PaymentMethod.CASH.value: "Наличные",
+    PaymentMethod.TRANSFER.value: "Перевод",
+    PaymentMethod.CARD.value: "Картой при получении",
+}
+
+PAYMENT_STATUS_LABELS: dict[str, str] = {
+    PaymentStatus.PENDING.value: "Ожидает оплаты",
+    PaymentStatus.PAID.value: "Оплачен",
+}
+
+
 # Allowed transitions: who can move an order from one status to another.
 ORDER_TRANSITIONS: dict[OrderStatus, list[OrderStatus]] = {
     OrderStatus.NEW: [OrderStatus.ACCEPTED, OrderStatus.CANCELLED],

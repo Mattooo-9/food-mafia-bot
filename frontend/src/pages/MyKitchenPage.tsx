@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api, ApiError, formatPrice } from "../api";
 import Spinner from "../components/Spinner";
 import StatusBadge from "../components/StatusBadge";
-import { COOK_ORDER_ACTIONS, KITCHEN_TABS, ORDER_STATUS_RANK } from "../constants";
+import { COOK_ORDER_ACTIONS, KITCHEN_TABS, ORDER_STATUS_RANK, PAYMENT_METHOD_LABELS, PAYMENT_STATUS_LABELS } from "../constants";
 import { haptic, showAlert } from "../telegram";
 import type { Food, Order, OrderStatus } from "../types";
 
@@ -112,7 +112,9 @@ export default function MyKitchenPage() {
               </div>
               <div className="food-meta" style={{ marginTop: 6 }}>
                 <span>× {order.quantity}</span>
-                <span>👤 {order.buyer_name ?? "Покупатель"}</span>
+                <span>{order.buyer_name ?? "Покупатель"}</span>
+                <span>{PAYMENT_METHOD_LABELS[order.payment_method]}</span>
+                <span>{PAYMENT_STATUS_LABELS[order.payment_status]}</span>
                 <span>{new Date(order.created_at).toLocaleString("ru-RU")}</span>
               </div>
               {order.comment && <p className="hint">💬 {order.comment}</p>}

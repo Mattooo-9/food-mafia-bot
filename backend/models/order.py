@@ -4,7 +4,7 @@ from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.database import Base
-from backend.models.enums import OrderStatus
+from backend.models.enums import OrderStatus, PaymentMethod, PaymentStatus
 
 
 class Order(Base):
@@ -27,6 +27,12 @@ class Order(Base):
         String(16), default=OrderStatus.NEW.value, index=True, nullable=False
     )
     comment: Mapped[str] = mapped_column(String(512), default="", nullable=False)
+    payment_method: Mapped[str] = mapped_column(
+        String(16), default=PaymentMethod.CASH.value, nullable=False
+    )
+    payment_status: Mapped[str] = mapped_column(
+        String(16), default=PaymentStatus.PENDING.value, nullable=False
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

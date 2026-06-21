@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 import FoodCard from "../components/FoodCard";
+import LocationBar from "../components/LocationBar";
+import SearchBar from "../components/SearchBar";
 import Spinner from "../components/Spinner";
 import { DISTANCES, FEEDS, RATINGS, sortRu } from "../constants";
 import { haptic } from "../telegram";
@@ -8,7 +10,7 @@ import type { Food, FoodFilters, FeedType } from "../types";
 import { useUser } from "../UserContext";
 
 export default function FeedPage() {
-  const { user, requestLocation } = useUser();
+  const { user } = useUser();
   const hasLocation = user?.lat != null;
 
   const [filters, setFilters] = useState<FoodFilters>({
@@ -18,6 +20,7 @@ export default function FeedPage() {
     min_rating: null,
     price_max: null,
     price_min: null,
+    q: "",
   });
   const [categories, setCategories] = useState<string[]>([]);
   const [foods, setFoods] = useState<Food[]>([]);
@@ -26,7 +29,7 @@ export default function FeedPage() {
   const [priceMax, setPriceMax] = useState("");
 
   const effectiveFeed: FeedType =
-    filters.feed === "nearby" && !hasLocation ? "new" : filters.feed;
+    filters.q ? "new" : filters.feed === "nearby" && !hasLocation ? "new" : filters.feed;
 
   const sortedCategories = useMemo(() => sortRu(categories), [categories]);
 
@@ -35,10 +38,14 @@ export default function FeedPage() {
   }, []);
 
   useEffect(() => {
-    if (!hasLocation && filters.feed === "nearby") {
+    if (!hasLocation && filters.feed === "nearby" && !filters.q) {
       setFilters((prev) => ({ ...prev, feed: "new" }));
     }
-  }, [hasLocation, filters.feed]);
+  }, [hasLocation, filters.feed, filters.q]);
+
+  const setQuery = useCallback((q: string) => {
+    setFilters((prev) => ({ ...prev, q }));
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -70,26 +77,22 @@ export default function FeedPage() {
     <div className="page">
       <h1 className="page-title">Еда Рядом</h1>
 
-      {!hasLocation && (
-        <div className="banner">
-          Геолокация не указана — показываем новые блюда.{" "}
-          <button className="btn small" onClick={() => void requestLocation()}>
-            Определить
-          </button>
+      <SearchBar value={filters.q} onChange={setQuery} placeholder="Блюдо, повар, описание…" />
+      <LocationBar />
+
+      {!filters.q && (
+        <div className="chips">
+          {FEEDS.map((f) => (
+            <button
+              key={f.id}
+              className={`chip ${effectiveFeed === f.id ? "active" : ""}`}
+              onClick={() => setFilters((prev) => ({ ...prev, feed: f.id }))}
+            >
+              {f.label}
+            </button>
+          ))}
         </div>
       )}
-
-      <div className="chips">
-        {FEEDS.map((f) => (
-          <button
-            key={f.id}
-            className={`chip ${effectiveFeed === f.id ? "active" : ""}`}
-            onClick={() => setFilters((prev) => ({ ...prev, feed: f.id }))}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
 
       <div className="chips">
         <button className="chip" onClick={() => setShowFilters((v) => !v)}>
@@ -174,7 +177,7 @@ export default function FeedPage() {
       ) : foods.length === 0 ? (
         <div className="empty">
           <span className="emoji">🍽</span>
-          Пока нет блюд по выбранным фильтрам
+          {filters.q ? "Ничего не найдено" : "Пока нет блюд по выбранным фильтрам"}
         </div>
       ) : (
         foods.map((food) => <FoodCard key={food.id} food={food} onToggleFavorite={toggleFavorite} />)

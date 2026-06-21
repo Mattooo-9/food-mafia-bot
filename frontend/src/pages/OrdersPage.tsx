@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, ApiError, formatPrice } from "../api";
 import Spinner from "../components/Spinner";
 import StatusBadge from "../components/StatusBadge";
-import { ORDER_STATUS_RANK } from "../constants";
+import { ORDER_STATUS_RANK, PAYMENT_METHOD_LABELS, PAYMENT_STATUS_LABELS } from "../constants";
 import { haptic, showAlert } from "../telegram";
 import type { Order } from "../types";
 
@@ -97,7 +97,7 @@ export default function OrdersPage() {
 
   return (
     <div className="page">
-      <h1 className="page-title">Мои заказы 📦</h1>
+      <h1 className="page-title">Заказы</h1>
       {orders.length === 0 ? (
         <div className="empty">
           <span className="emoji">🛒</span>Вы ещё ничего не заказывали
@@ -113,7 +113,9 @@ export default function OrdersPage() {
             </div>
             <div className="food-meta" style={{ marginTop: 6 }}>
               <span>× {order.quantity}</span>
-              <span>👨‍🍳 {order.cook_name ?? "Повар"}</span>
+              <span>{order.cook_name ?? "Повар"}</span>
+              <span>{PAYMENT_METHOD_LABELS[order.payment_method]}</span>
+              <span>{PAYMENT_STATUS_LABELS[order.payment_status]}</span>
               <span>{new Date(order.created_at).toLocaleString("ru-RU")}</span>
             </div>
             <div className="row between" style={{ marginTop: 8 }}>

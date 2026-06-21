@@ -5,7 +5,7 @@ import logging
 import uvicorn
 from aiogram import Dispatcher
 from aiogram.exceptions import TelegramAPIError
-from aiogram.types import MenuButtonWebApp, Update, WebAppInfo
+from aiogram.types import BotCommand, MenuButtonWebApp, Update, WebAppInfo
 from fastapi import FastAPI, HTTPException, Request
 
 from backend.api.app import create_app
@@ -43,6 +43,14 @@ async def apply_menu_button() -> None:
         logger.warning("WEBAPP_URL is not set — Mini App button is not configured")
         return
     try:
+        await bot.set_my_commands(
+            [
+                BotCommand(command="start", description="Главное меню"),
+                BotCommand(command="app", description="Открыть приложение"),
+                BotCommand(command="become_cook", description="Стать поваром"),
+                BotCommand(command="help", description="Справка"),
+            ]
+        )
         await bot.set_chat_menu_button(
             menu_button=MenuButtonWebApp(
                 text="Еда Рядом", web_app=WebAppInfo(url=public_url)

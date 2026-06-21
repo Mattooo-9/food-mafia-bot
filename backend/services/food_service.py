@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -109,6 +109,7 @@ async def search_foods(
     viewer: User,
     feed: str = "nearby",
     category: str | None = None,
+    q: str | None = None,
     max_distance_m: float | None = None,
     price_min: float | None = None,
     price_max: float | None = None,
@@ -135,6 +136,16 @@ async def search_foods(
         query = query.where(Food.price <= price_max)
     if min_rating is not None:
         query = query.where(User.rating_avg >= min_rating)
+    if q and q.strip():
+        needle = f"%{q.strip().lower()}%"
+        query = query.where(
+            or_(
+                func.lower(Food.name).like(needle),
+                func.lower(Food.description).like(needle),
+                func.lower(User.cook_name).like(needle),
+                func.lower(User.first_name).like(needle),
+            )
+        )
 
     result = await session.execute(query)
     foods = list(result.scalars().all())
@@ -152,7 +163,15 @@ async def search_foods(
         items.append(FoodWithDistance(food=food, distance_m=distance))
 
     far = float("inf")
-    if feed == "nearby":
+    if q and q.strip():
+        needle = q.strip().lower()
+        items.sort(
+            key=lambda i: (
+                0 if needle in i.food.name.lower() else 1,
+                i.distance_m if i.distance_m is not None else far,
+            )
+        )
+    elif feed == "nearby":
         items.sort(key=lambda i: i.distance_m if i.distance_m is not None else far)
     elif feed == "new":
         items.sort(key=lambda i: i.food.created_at, reverse=True)
@@ -171,6 +190,7 @@ async def search_foods(
 async def search_cooks(
     session: AsyncSession,
     viewer: User,
+    q: str | None = None,
     max_distance_m: float | None = None,
     min_rating: float | None = None,
     limit: int = 50,
@@ -179,6 +199,15 @@ async def search_cooks(
     query = select(User).where(User.is_cook.is_(True), User.is_online.is_(True))
     if min_rating is not None:
         query = query.where(User.rating_avg >= min_rating)
+    if q and q.strip():
+        needle = f"%{q.strip().lower()}%"
+        query = query.where(
+            or_(
+                func.lower(User.cook_name).like(needle),
+                func.lower(User.first_name).like(needle),
+                func.lower(User.cook_description).like(needle),
+            )
+        )
     result = await session.execute(query)
     cooks = list(result.scalars().all())
 

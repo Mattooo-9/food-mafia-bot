@@ -22,7 +22,7 @@ def main_reply_keyboard() -> ReplyKeyboardMarkup:
         resize_keyboard=True,
         keyboard=[
             [KeyboardButton(text="📍 Отправить геолокацию", request_location=True)],
-            [KeyboardButton(text="👨‍🍳 Стать поваром"), KeyboardButton(text="ℹ️ Помощь")],
+            [KeyboardButton(text="👨‍🍳 Стать поваром")],
         ],
     )
 
@@ -48,36 +48,36 @@ async def cmd_start(message: Message) -> None:
 
     text = (
         f"Привет, {tg.first_name or 'друг'}! 👋\n\n"
-        "<b>Еда Рядом</b> — домашняя еда от поваров рядом с тобой.\n\n"
-        "🍲 Открой приложение, чтобы посмотреть блюда поблизости.\n"
-        "📍 Отправь геолокацию, чтобы мы показывали еду рядом.\n"
-        "👨‍🍳 Хочешь готовить и продавать? Жми «Стать поваром»."
+        "<b>Еда Рядом</b> — домашняя еда от поваров рядом.\n\n"
+        "🍲 Открой приложение — поиск, заказы, оплата, рейтинги.\n"
+        "📍 Отправь геолокацию, чтобы видеть блюда рядом."
     )
     markup = webapp_keyboard()
     if markup is None:
-        text += "\n\n⚠️ Mini App ещё не подключено: администратору нужно указать WEBAPP_URL в .env."
-    await message.answer(text, reply_markup=main_reply_keyboard())
-    if markup is not None:
-        await message.answer("Открыть приложение:", reply_markup=markup)
+        text += "\n\n⚠️ Mini App ещё не подключено."
+        await message.answer(text, reply_markup=main_reply_keyboard())
+        return
+    await message.answer(text, reply_markup=markup)
+    await message.answer("Быстрые действия:", reply_markup=main_reply_keyboard())
 
 
 @router.message(Command("app"))
 async def cmd_app(message: Message) -> None:
     markup = webapp_keyboard()
     if markup is None:
-        await message.answer("Mini App ещё не подключено: администратору нужно указать WEBAPP_URL в .env.")
+        await message.answer("Mini App ещё не подключено.")
         return
     await message.answer("Открыть приложение:", reply_markup=markup)
 
 
 @router.message(Command("help"))
-@router.message(lambda m: m.text == "ℹ️ Помощь")
 async def cmd_help(message: Message) -> None:
     await message.answer(
-        "<b>Команды бота:</b>\n\n"
-        "/start — главное меню\n"
-        "/app — открыть Mini App\n"
-        "/become_cook — зарегистрироваться как повар\n\n"
-        "📍 Отправьте геолокацию через кнопку, чтобы видеть еду рядом.\n"
-        "🔔 Бот присылает уведомления о заказах и новых блюдах поваров, на которых вы подписаны."
+        "<b>Справка</b>\n\n"
+        "/start — меню\n"
+        "/app — Mini App\n"
+        "/become_cook — стать поваром\n\n"
+        "📍 Геолокация — кнопка внизу или в профиле приложения.\n"
+        "💳 Оплата — при заказе выбираете способ, расчёт при получении.\n"
+        "⭐ Отзыв — после доставки в разделе «Заказы»."
     )

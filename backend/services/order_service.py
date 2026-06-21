@@ -7,7 +7,7 @@ from sqlalchemy.orm import selectinload
 
 from backend.config import settings
 from backend.models import Food, Order, OrderStatus, PlatformBalance, User
-from backend.models.enums import ORDER_TRANSITIONS
+from backend.models.enums import ORDER_TRANSITIONS, PaymentMethod, PaymentStatus
 from backend.services import notification_service
 
 logger = logging.getLogger(__name__)
@@ -38,6 +38,7 @@ async def create_order(
     food_id: int,
     quantity: int,
     comment: str = "",
+    payment_method: str = "CASH",
 ) -> Order:
     if quantity < 1:
         raise OrderError("Количество должно быть не меньше 1")
@@ -63,6 +64,9 @@ async def create_order(
     if dup_result.first() is not None:
         raise OrderError("Похожий заказ уже оформлен. Дождитесь ответа повара.")
 
+    if payment_method not in {m.value for m in PaymentMethod}:
+        raise OrderError("Неизвестный способ оплаты")
+
     total_price = round(food.price * quantity, 2)
     order = Order(
         buyer_id=buyer.id,
@@ -72,6 +76,8 @@ async def create_order(
         total_price=total_price,
         status=OrderStatus.NEW.value,
         comment=comment.strip()[:512],
+        payment_method=payment_method,
+        payment_status=PaymentStatus.PENDING.value,
     )
     food.portions -= quantity
     session.add(order)
@@ -118,6 +124,7 @@ async def change_status(
         food = await session.get(Food, order.food_id)
         if food is not None:
             food.orders_count += 1
+        order.payment_status = PaymentStatus.PAID.value
         await _accrue_platform_commission(session, order)
 
     await session.commit()

@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.bot_instance import bot
 from backend.models import Food, Order, OrderStatus, Subscription, User
+from backend.models.enums import PAYMENT_METHOD_LABELS
 
 logger = logging.getLogger(__name__)
 
@@ -74,10 +75,12 @@ def cook_order_keyboard(order: Order) -> InlineKeyboardMarkup:
 
 
 def _order_summary(order: Order, food: Food) -> str:
+    pay = PAYMENT_METHOD_LABELS.get(order.payment_method, order.payment_method)
     lines = [
         f"Заказ #{order.id}",
         f"🍽 {food.name} × {order.quantity}",
         f"💰 {order.total_price:.2f} ₽",
+        f"💳 {pay}",
     ]
     if order.comment:
         lines.append(f"💬 {order.comment}")
@@ -99,7 +102,7 @@ async def notify_buyer_status(order: Order, food: Food, buyer: User) -> None:
         OrderStatus.ACCEPTED.value: "Повар принял ваш заказ!",
         OrderStatus.COOKING.value: "Повар начал готовить ваш заказ.",
         OrderStatus.READY.value: "Ваш заказ готов к выдаче! 🎉",
-        OrderStatus.DELIVERED.value: "Заказ завершён. Оцените повара в приложении!",
+        OrderStatus.DELIVERED.value: "Заказ завершён. Оплата получена. Оцените повара в приложении!",
         OrderStatus.CANCELLED.value: "Заказ отменён.",
     }
     header = headers.get(order.status, "Статус заказа изменён.")
