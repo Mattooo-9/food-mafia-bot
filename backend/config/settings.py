@@ -83,6 +83,9 @@ class Settings(BaseSettings):
     referral_max_discount_rate: float = 0.15
     ton_per_star: float = 0.004  # Display / TON payment conversion hint
 
+    ai_refresh_interval_minutes: int = 360
+    ai_market_radius_m: float = 10_000
+
     log_level: str = "INFO"
 
 

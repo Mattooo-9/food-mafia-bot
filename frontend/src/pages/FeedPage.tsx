@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 import FoodCard from "../components/FoodCard";
+import AiMarketCard from "../components/AiMarketCard";
 import LocationBar from "../components/LocationBar";
 import SearchBar from "../components/SearchBar";
 import Spinner from "../components/Spinner";
@@ -79,6 +80,8 @@ export default function FeedPage() {
 
       <SearchBar value={filters.q} onChange={setQuery} placeholder="Блюдо, повар, описание…" />
       <LocationBar />
+
+      <AiMarketCard />
 
       {!filters.q && (
         <div className="chips">

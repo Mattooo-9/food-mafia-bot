@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, ApiError } from "../api";
 import Spinner from "../components/Spinner";
+import AiPriceHint from "../components/AiPriceHint";
 import { sortRu } from "../constants";
 import { haptic, showAlert } from "../telegram";
 
@@ -113,6 +114,7 @@ export default function DishFormPage() {
         <div className="field">
           <label>Цена, ⭐</label>
           <input type="number" min={1} value={price} onChange={(e) => setPrice(e.target.value)} placeholder="250" />
+          <AiPriceHint category={category} price={price} />
         </div>
         <div className="field">
           <label>Категория</label>

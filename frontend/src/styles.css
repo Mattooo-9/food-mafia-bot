@@ -706,3 +706,138 @@ body {
 .referral-stats strong {
   color: var(--text);
 }
+
+/* AI analyst */
+.ai-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  background: linear-gradient(145deg, rgba(139, 92, 246, 0.12), rgba(0, 212, 255, 0.08));
+}
+
+.ai-glow {
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.35), transparent 70%);
+  pointer-events: none;
+}
+
+.ai-title {
+  font-size: 16px;
+  background: var(--gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.ai-desc {
+  margin: 8px 0 0;
+  font-size: 12px;
+}
+
+.ai-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--hint);
+}
+
+.ai-stats strong {
+  color: var(--text);
+}
+
+.ai-insight {
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.ai-recs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ai-rec-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.ai-score {
+  font-weight: 700;
+  color: var(--accent);
+  font-size: 12px;
+}
+
+.ai-eval {
+  margin-top: 12px;
+  border: 1px solid rgba(0, 212, 255, 0.25);
+}
+
+.ai-score-badge {
+  font-weight: 800;
+  font-size: 14px;
+  padding: 2px 8px;
+  border-radius: 8px;
+}
+
+.ai-score-badge.high {
+  background: rgba(52, 211, 153, 0.2);
+  color: var(--success);
+}
+
+.ai-score-badge.mid {
+  background: rgba(0, 212, 255, 0.15);
+  color: var(--accent);
+}
+
+.ai-score-badge.low {
+  background: rgba(255, 92, 106, 0.15);
+  color: var(--danger);
+}
+
+.ai-meter-row {
+  display: grid;
+  grid-template-columns: 72px 1fr 28px;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--hint);
+}
+
+.ai-meter {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.ai-meter-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--gradient);
+}
+
+.ai-price-hint {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  font-size: 13px;
+}

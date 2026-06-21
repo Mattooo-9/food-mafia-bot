@@ -1,5 +1,5 @@
 import { getInitData } from "./telegram";
-import type { Cook, Food, FoodFilters, Order, OrderStatus, PaymentMethod, ReferralInfo, Review, User } from "./types";
+import type { Cook, Food, FoodFilters, MarketOverview, Order, OrderStatus, PaymentMethod, PriceSuggestion, ReferralInfo, Review, User, FoodEvaluation, Recommendation } from "./types";
 
 export class ApiError extends Error {
   status: number;
@@ -34,6 +34,15 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 export const api = {
   getMe: () => request<User>("/api/me"),
   getCurrency: () => request<{ currency: string; ton_per_star: number; referral_unit: string }>("/api/currency"),
+  getAiMarket: () => request<MarketOverview>("/api/ai/market"),
+  getPriceSuggestion: (category: string, price?: number) => {
+    const params = new URLSearchParams({ category });
+    if (price != null && price > 0) params.set("price", String(price));
+    return request<PriceSuggestion>(`/api/ai/price-suggestion?${params}`);
+  },
+  getFoodEvaluation: (foodId: number) =>
+    request<FoodEvaluation>(`/api/ai/food/${foodId}/evaluation`),
+  getAiRecommendations: () => request<Recommendation[]>("/api/ai/recommendations"),
   getReferral: () => request<ReferralInfo>("/api/me/referral"),
   setWallet: (ton_wallet_address: string | null) =>
     request<User>("/api/me/wallet", {

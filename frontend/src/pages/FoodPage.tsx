@@ -10,6 +10,7 @@ import {
   formatTon,
 } from "../api";
 import Spinner from "../components/Spinner";
+import AiEvaluationBadge from "../components/AiEvaluationBadge";
 import Stars from "../components/Stars";
 import { PAYMENT_METHODS } from "../constants";
 import { haptic, openInvoice, showAlert } from "../telegram";
@@ -182,6 +183,8 @@ export default function FoodPage() {
           {food.portions > 0 ? `Доступно порций: ${food.portions}` : "Порции закончились"}
         </p>
       </div>
+
+      <AiEvaluationBadge foodId={food.id} />
 
       <div
         className="card food-card"

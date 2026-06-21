@@ -132,18 +132,31 @@ async def main() -> None:
     dp = create_dispatcher()
     attach_webhook_route(app, dp)
 
+    async def ai_refresh_loop() -> None:
+        from backend.database import async_session_factory
+        from backend.services import ai_analyst_service
+
+        await asyncio.sleep(15)
+        while True:
+            try:
+                async with async_session_factory() as session:
+                    await ai_analyst_service.refresh_market_data(session)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("AI market refresh failed: %s", exc)
+            await asyncio.sleep(max(60, settings.ai_refresh_interval_minutes * 60))
+
     try:
         if settings.use_webhook and settings.public_url:
-            tasks: list = [run_api(app), cloud_bot_setup()]
+            tasks: list = [run_api(app), cloud_bot_setup(), ai_refresh_loop()]
             if settings.keep_alive_interval_minutes > 0:
                 tasks.append(keep_alive_loop())
             await asyncio.gather(*tasks)
         elif settings.use_webhook:
             logger.warning("USE_WEBHOOK=1, но публичный URL не задан — запускаю polling")
-            await asyncio.gather(run_api(app), run_polling(dp))
+            await asyncio.gather(run_api(app), run_polling(dp), ai_refresh_loop())
         else:
             await apply_menu_button()
-            await asyncio.gather(run_api(app), run_polling(dp))
+            await asyncio.gather(run_api(app), run_polling(dp), ai_refresh_loop())
     finally:
         await bot.session.close()
 

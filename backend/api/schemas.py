@@ -184,3 +184,67 @@ class UploadOut(BaseModel):
 
 class OkOut(BaseModel):
     ok: bool = True
+
+
+class MarketInsightOut(BaseModel):
+    category: str
+    dish_count: int
+    median_price: float
+    avg_price: float
+    min_price: float
+    max_price: float
+    avg_rating: float
+    demand_index: float
+    competition_index: float
+    trend: str
+    trend_label: str
+    summary: str
+
+
+class MarketOverviewOut(BaseModel):
+    total_dishes: int
+    total_orders: int
+    avg_price: float
+    median_price: float
+    avg_rating: float
+    top_category: str
+    insights: list[MarketInsightOut]
+    analyst_note: str
+
+
+class PriceSuggestionOut(BaseModel):
+    category: str
+    fair_price: float
+    suggested_price_min: float
+    suggested_price_max: float
+    verdict: str
+    verdict_label: str
+    price_score: int
+    summary: str
+
+
+class FoodEvaluationOut(BaseModel):
+    food_id: int
+    price_score: int
+    quality_score: int
+    demand_score: int
+    overall_score: int
+    verdict: str
+    verdict_label: str
+    fair_price: float
+    suggested_price_min: float
+    suggested_price_max: float
+    summary: str
+    buyer_tip: str
+
+
+class RecommendationOut(BaseModel):
+    food_id: int
+    food_name: str
+    food_photo: str | None
+    price: float
+    cook_name: str | None
+    distance_m: float | None
+    overall_score: int
+    buyer_tip: str
+    verdict_label: str

@@ -1,3 +1,4 @@
+from backend.models.ai_insight import FoodEvaluation, MarketSnapshot
 from backend.models.enums import FOOD_CATEGORIES, OrderStatus, PaymentMethod, PaymentStatus
 from backend.models.favorite import FavoriteCook, FavoriteFood
 from backend.models.food import Food
@@ -20,4 +21,6 @@ __all__ = [
     "FavoriteCook",
     "Subscription",
     "PlatformBalance",
+    "MarketSnapshot",
+    "FoodEvaluation",
 ]

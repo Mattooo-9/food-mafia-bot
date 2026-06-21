@@ -72,6 +72,70 @@ export interface TonPayment {
   comment: string;
 }
 
+export interface MarketInsight {
+  category: string;
+  dish_count: number;
+  median_price: number;
+  avg_price: number;
+  min_price: number;
+  max_price: number;
+  avg_rating: number;
+  demand_index: number;
+  competition_index: number;
+  trend: string;
+  trend_label: string;
+  summary: string;
+}
+
+export interface MarketOverview {
+  total_dishes: number;
+  total_orders: number;
+  avg_price: number;
+  median_price: number;
+  avg_rating: number;
+  top_category: string;
+  insights: MarketInsight[];
+  analyst_note: string;
+}
+
+export interface PriceSuggestion {
+  category: string;
+  fair_price: number;
+  suggested_price_min: number;
+  suggested_price_max: number;
+  verdict: string;
+  verdict_label: string;
+  price_score: number;
+  summary: string;
+}
+
+export interface FoodEvaluation {
+  food_id: number;
+  price_score: number;
+  quality_score: number;
+  demand_score: number;
+  overall_score: number;
+  verdict: string;
+  verdict_label: string;
+  fair_price: number;
+  suggested_price_min: number;
+  suggested_price_max: number;
+  summary: string;
+  buyer_tip: string;
+}
+
+export interface Recommendation {
+  food_id: number;
+  food_name: string;
+  food_photo: string | null;
+  price: number;
+  cook_name: string | null;
+  distance_m: number | null;
+  overall_score: number;
+  buyer_tip: string;
+  verdict_label: string;
+}
+
 export interface Order {
   id: number;
   buyer_id: number;
