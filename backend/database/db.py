@@ -79,6 +79,11 @@ async def _migrate_sqlite(conn) -> None:
         conn.execute(text("ALTER TABLE users ADD COLUMN ton_wallet_address VARCHAR(128)"))
         logger.info("Added users.ton_wallet_address")
 
+    foods_cols = column_names("foods")
+    if "ingredients" not in foods_cols:
+        conn.execute(text("ALTER TABLE foods ADD COLUMN ingredients TEXT NOT NULL DEFAULT ''"))
+        logger.info("Added foods.ingredients")
+
     # Users with deliveries before referral rollout should not get retroactive welcome bonus.
     conn.execute(
         text(

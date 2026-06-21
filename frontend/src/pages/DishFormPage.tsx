@@ -18,6 +18,7 @@ export default function DishFormPage() {
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [ingredients, setIngredients] = useState("");
   const [price, setPrice] = useState("");
   const [category, setCategory] = useState("");
   const [portions, setPortions] = useState("1");
@@ -40,6 +41,7 @@ export default function DishFormPage() {
       .then((food) => {
         setName(food.name);
         setDescription(food.description);
+        setIngredients(food.ingredients ?? "");
         setPrice(String(food.price));
         setCategory(food.category);
         setPortions(String(food.portions));
@@ -69,6 +71,7 @@ export default function DishFormPage() {
       const payload = {
         name: name.trim(),
         description: description.trim(),
+        ingredients: ingredients.trim(),
         price: priceNum,
         category,
         portions: Math.max(0, Number(portions) || 0),
@@ -112,9 +115,28 @@ export default function DishFormPage() {
           />
         </div>
         <div className="field">
+          <label>Расходники (через запятую)</label>
+          <textarea
+            value={ingredients}
+            onChange={(e) => setIngredients(e.target.value)}
+            placeholder="курица, картофель, лук, сметана"
+            maxLength={2000}
+          />
+          <p className="hint" style={{ marginTop: 4, fontSize: 11 }}>
+            ИИ посчитает себестоимость с учётом сезона и подскажет справедливую цену
+          </p>
+        </div>
+        <div className="field">
           <label>Цена, ⭐</label>
           <input type="number" min={1} value={price} onChange={(e) => setPrice(e.target.value)} placeholder="250" />
-          <AiPriceHint category={category} price={price} />
+          <AiPriceHint
+            category={category}
+            price={price}
+            ingredients={ingredients}
+            portions={portions}
+            cookingTime={cookingTime}
+            name={name}
+          />
         </div>
         <div className="field">
           <label>Категория</label>

@@ -8,12 +8,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.config import settings
 from backend.models import Food, FoodEvaluation, MarketSnapshot, User
-from backend.services import analytics_service
+from backend.services import analytics_service, pricing_engine
 from backend.services.analytics_service import CategoryStats, MarketOverview
+from backend.services.pricing_engine import VERDICT_LABELS as PRICING_VERDICTS
 
 logger = logging.getLogger(__name__)
 
 VERDICT_LABELS = {
+    **PRICING_VERDICTS,
     "underpriced": "Ниже рынка",
     "fair": "Справедливая цена",
     "premium": "Премиум",
@@ -85,7 +87,9 @@ def _build_food_summary(
         lines.append(f"Заказали {food.orders_count} раз — {'высокий' if demand_score >= 65 else 'умеренный' if demand_score >= 40 else 'низкий'} спрос.")
 
     buyer_tip = "Хороший выбор по соотношению цены и качества."
-    if verdict == "underpriced" and quality_score >= 60:
+    if verdict == "below_cost":
+        buyer_tip = "Цена ниже себестоимости — повару может быть невыгодно."
+    elif verdict == "underpriced" and quality_score >= 60:
         buyer_tip = "Выгодная цена при достойном качестве — рекомендуем попробовать."
     elif verdict == "overpriced":
         buyer_tip = "Цена выше рынка — сравните с похожими блюдами в ленте."
@@ -123,20 +127,29 @@ async def evaluate_food(
     stats_by_cat: dict[str, CategoryStats],
 ) -> FoodEvaluation:
     stats = stats_by_cat.get(food.category)
-    median = stats.median_price if stats else food.price
-    fair = median if median > 0 else food.price
-    verdict, price_score = _price_verdict(food.price, median)
+    regional_avg = stats.avg_price if stats and stats.dish_count >= 2 else (stats.median_price if stats else 0)
+
+    rec = pricing_engine.compute_fair_price(
+        regional_avg,
+        food.category,
+        ingredients=food.ingredients or food.description,
+        portions=max(food.portions, 1),
+        cooking_time_minutes=food.cooking_time_minutes,
+        current_price=food.price,
+        region_label="регион" if cook.lat else "платформа",
+        dish_name=food.name,
+    )
+
+    verdict, price_score = rec.verdict, rec.price_score
     sentiment = stats.review_sentiment if stats else 0.0
     quality_score = _quality_score(cook, sentiment)
     demand_score = _demand_score(food, stats)
     overall = int(price_score * 0.35 + quality_score * 0.4 + demand_score * 0.25)
 
-    suggested_min = max(1, round(fair * 0.82))
-    suggested_max = max(suggested_min + 1, round(fair * 1.18))
-
     summary, buyer_tip = _build_food_summary(
         food, cook, verdict, price_score, quality_score, demand_score, stats
     )
+    summary = f"{rec.summary} {summary}"
 
     existing = await session.execute(
         select(FoodEvaluation).where(FoodEvaluation.food_id == food.id)
@@ -151,46 +164,67 @@ async def evaluate_food(
     ev.demand_score = demand_score
     ev.overall_score = overall
     ev.verdict = verdict
-    ev.fair_price = round(fair, 2)
-    ev.suggested_price_min = float(suggested_min)
-    ev.suggested_price_max = float(suggested_max)
+    ev.fair_price = rec.fair_price
+    ev.suggested_price_min = rec.suggested_price_min
+    ev.suggested_price_max = rec.suggested_price_max
     ev.summary = summary
-    ev.buyer_tip = buyer_tip
+    ev.buyer_tip = rec.buyer_savings_hint or buyer_tip
     ev.updated_at = datetime.now(timezone.utc)
     return ev
 
 
 async def refresh_market_data(session: AsyncSession) -> int:
     """Recompute and persist market snapshots + food evaluations."""
+    from backend.services.analytics_service import region_key
+
+    # Global overview
     overview = await analytics_service.get_market_overview(
         session, radius_m=settings.ai_market_radius_m
     )
     stats_by_cat = {c.category: c for c in overview.categories}
-    region = "global"
 
-    await session.execute(delete(MarketSnapshot).where(MarketSnapshot.region_key == region))
+    await session.execute(delete(MarketSnapshot))
 
-    for cat in overview.categories:
-        demand = analytics_service.demand_index(cat)
-        competition = analytics_service.competition_index(cat.dish_count)
-        trend = "rising" if demand >= 60 else "falling" if demand <= 35 else "stable"
-        session.add(
-            MarketSnapshot(
-                category=cat.category,
-                region_key=region,
-                dish_count=cat.dish_count,
-                order_volume=cat.order_volume,
-                avg_price=cat.avg_price,
-                median_price=cat.median_price,
-                min_price=cat.min_price,
-                max_price=cat.max_price,
-                avg_rating=cat.avg_rating,
-                demand_index=demand,
-                competition_index=competition,
-                summary=_build_market_summary(overview, cat),
-                trend=trend,
-            )
+    regions: dict[str, tuple[float | None, float | None]] = {"global": (None, None)}
+    cooks_result = await session.execute(
+        select(User.lat, User.lon).where(
+            User.is_cook.is_(True),
+            User.is_online.is_(True),
+            User.lat.isnot(None),
+            User.lon.isnot(None),
         )
+    )
+    for lat, lon in cooks_result.all():
+        rk = region_key(lat, lon)
+        regions[rk] = (lat, lon)
+
+    for rk, (lat, lon) in regions.items():
+        reg_overview = await analytics_service.get_market_overview(
+            session, lat, lon, settings.ai_market_radius_m
+        )
+        for cat in reg_overview.categories:
+            demand = analytics_service.demand_index(cat)
+            competition = analytics_service.competition_index(cat.dish_count)
+            trend = "rising" if demand >= 60 else "falling" if demand <= 35 else "stable"
+            session.add(
+                MarketSnapshot(
+                    category=cat.category,
+                    region_key=rk,
+                    dish_count=cat.dish_count,
+                    order_volume=cat.order_volume,
+                    avg_price=cat.avg_price,
+                    median_price=cat.median_price,
+                    min_price=cat.min_price,
+                    max_price=cat.max_price,
+                    avg_rating=cat.avg_rating,
+                    demand_index=demand,
+                    competition_index=competition,
+                    summary=_build_market_summary(reg_overview, cat),
+                    trend=trend,
+                )
+            )
+        if rk == "global":
+            stats_by_cat = {c.category: c for c in reg_overview.categories}
 
     result = await session.execute(
         select(Food, User)
@@ -207,8 +241,12 @@ async def refresh_market_data(session: AsyncSession) -> int:
     return count
 
 
-async def get_cached_market(session: AsyncSession, category: str | None = None) -> list[MarketSnapshot]:
-    query = select(MarketSnapshot).where(MarketSnapshot.region_key == "global")
+async def get_cached_market(
+    session: AsyncSession,
+    category: str | None = None,
+    region_key: str = "global",
+) -> list[MarketSnapshot]:
+    query = select(MarketSnapshot).where(MarketSnapshot.region_key == region_key)
     if category:
         query = query.where(MarketSnapshot.category == category)
     query = query.order_by(MarketSnapshot.demand_index.desc())
@@ -226,36 +264,57 @@ async def get_food_evaluation(session: AsyncSession, food_id: int) -> FoodEvalua
 async def get_price_suggestion(
     session: AsyncSession,
     category: str,
+    *,
+    lat: float | None = None,
+    lon: float | None = None,
     current_price: float | None = None,
+    ingredients: str = "",
+    portions: int = 1,
+    cooking_time_minutes: int = 30,
+    dish_name: str = "",
 ) -> dict:
-    snaps = await get_cached_market(session, category)
-    if snaps:
-        snap = snaps[0]
-        fair = snap.median_price or snap.avg_price
-    else:
-        overview = await analytics_service.get_market_overview(session)
-        cat_stats = next((c for c in overview.categories if c.category == category), None)
-        fair = cat_stats.median_price if cat_stats else 100.0
+    stats, region_label = await analytics_service.get_regional_category_stats(
+        session,
+        category,
+        lat,
+        lon,
+        settings.ai_market_radius_m,
+    )
+    regional_avg = stats.avg_price if stats and stats.dish_count >= 2 else (
+        stats.median_price if stats else 0
+    )
 
-    suggested_min = max(1, round(fair * 0.82))
-    suggested_max = max(suggested_min + 1, round(fair * 1.18))
-    verdict = "fair"
-    score = 75
-    if current_price is not None and fair > 0:
-        verdict, score = _price_verdict(current_price, fair)
+    rec = pricing_engine.compute_fair_price(
+        regional_avg,
+        category,
+        ingredients=ingredients,
+        portions=portions,
+        cooking_time_minutes=cooking_time_minutes,
+        current_price=current_price,
+        region_label=region_label,
+        dish_name=dish_name,
+    )
 
     return {
         "category": category,
-        "fair_price": round(fair, 2),
-        "suggested_price_min": float(suggested_min),
-        "suggested_price_max": float(suggested_max),
-        "verdict": verdict,
-        "verdict_label": VERDICT_LABELS.get(verdict, verdict),
-        "price_score": score,
-        "summary": (
-            f"ИИ рекомендует для «{category}»: {suggested_min}–{suggested_max} ⭐ "
-            f"(справедливая ~{int(fair)} ⭐)."
-        ),
+        "fair_price": rec.fair_price,
+        "suggested_price_min": rec.suggested_price_min,
+        "suggested_price_max": rec.suggested_price_max,
+        "verdict": rec.verdict,
+        "verdict_label": VERDICT_LABELS.get(rec.verdict, rec.verdict),
+        "price_score": rec.price_score,
+        "summary": rec.summary,
+        "regional_avg_price": rec.regional_avg_price,
+        "seasonal_market_price": rec.seasonal_market_price,
+        "season_name": rec.season_name,
+        "season_factor": rec.season_factor,
+        "ingredient_cost": rec.ingredient_cost,
+        "labor_cost": rec.labor_cost,
+        "cook_minimum": rec.cook_minimum,
+        "cook_margin_percent": rec.cook_margin_percent,
+        "region_label": rec.region_label,
+        "ingredient_items": rec.ingredient_items,
+        "buyer_savings_hint": rec.buyer_savings_hint,
     }
 
 

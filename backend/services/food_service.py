@@ -31,6 +31,7 @@ async def create_food(
     portions: int,
     cooking_time_minutes: int,
     photo: str | None,
+    ingredients: str = "",
 ) -> Food:
     if not cook.is_cook:
         raise FoodError("Сначала создайте профиль повара")
@@ -45,6 +46,7 @@ async def create_food(
         portions=portions,
         cooking_time_minutes=cooking_time_minutes,
         photo=photo,
+        ingredients=ingredients.strip()[:2000],
     )
     session.add(food)
     await session.commit()
@@ -67,12 +69,13 @@ async def update_food(session: AsyncSession, cook: User, food_id: int, data: dic
         "cooking_time_minutes",
         "is_active",
         "photo",
+        "ingredients",
     ):
         if field in data and data[field] is not None:
             value = data[field]
             if field == "price":
                 value = round(float(value), 2)
-            if field in ("name", "description"):
+            if field in ("name", "description", "ingredients"):
                 value = str(value).strip()
             setattr(food, field, value)
     await session.commit()

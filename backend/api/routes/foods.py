@@ -75,6 +75,7 @@ async def create_food(payload: FoodIn, cook: CurrentCook, session: SessionDep) -
             portions=payload.portions,
             cooking_time_minutes=payload.cooking_time_minutes,
             photo=payload.photo,
+            ingredients=payload.ingredients,
         )
     except FoodError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

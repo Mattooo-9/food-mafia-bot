@@ -34,6 +34,7 @@ export interface Food {
   cook_id: number;
   name: string;
   description: string;
+  ingredients: string;
   photo: string | null;
   price: number;
   category: string;
@@ -107,6 +108,17 @@ export interface PriceSuggestion {
   verdict_label: string;
   price_score: number;
   summary: string;
+  regional_avg_price: number;
+  seasonal_market_price: number;
+  season_name: string;
+  season_factor: number;
+  ingredient_cost: number;
+  labor_cost: number;
+  cook_minimum: number;
+  cook_margin_percent: number;
+  region_label: string;
+  ingredient_items: string[];
+  buyer_savings_hint: string;
 }
 
 export interface FoodEvaluation {

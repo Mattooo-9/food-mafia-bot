@@ -35,9 +35,24 @@ export const api = {
   getMe: () => request<User>("/api/me"),
   getCurrency: () => request<{ currency: string; ton_per_star: number; referral_unit: string }>("/api/currency"),
   getAiMarket: () => request<MarketOverview>("/api/ai/market"),
-  getPriceSuggestion: (category: string, price?: number) => {
+  getPriceSuggestion: (
+    category: string,
+    opts?: {
+      price?: number;
+      ingredients?: string;
+      portions?: number;
+      cooking_time_minutes?: number;
+      name?: string;
+    },
+  ) => {
     const params = new URLSearchParams({ category });
-    if (price != null && price > 0) params.set("price", String(price));
+    if (opts?.price != null && opts.price > 0) params.set("price", String(opts.price));
+    if (opts?.ingredients) params.set("ingredients", opts.ingredients);
+    if (opts?.portions != null) params.set("portions", String(opts.portions));
+    if (opts?.cooking_time_minutes != null) {
+      params.set("cooking_time_minutes", String(opts.cooking_time_minutes));
+    }
+    if (opts?.name) params.set("name", opts.name);
     return request<PriceSuggestion>(`/api/ai/price-suggestion?${params}`);
   },
   getFoodEvaluation: (foodId: number) =>

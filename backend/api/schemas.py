@@ -82,6 +82,7 @@ class CookOut(BaseModel):
 class FoodIn(BaseModel):
     name: str = Field(min_length=2, max_length=128)
     description: str = Field(default="", max_length=2000)
+    ingredients: str = Field(default="", max_length=2000)
     price: float = Field(gt=0, le=1_000_000)
     category: str
     portions: int = Field(ge=0, le=1000)
@@ -92,6 +93,7 @@ class FoodIn(BaseModel):
 class FoodUpdateIn(BaseModel):
     name: str | None = Field(default=None, min_length=2, max_length=128)
     description: str | None = Field(default=None, max_length=2000)
+    ingredients: str | None = Field(default=None, max_length=2000)
     price: float | None = Field(default=None, gt=0, le=1_000_000)
     category: str | None = None
     portions: int | None = Field(default=None, ge=0, le=1000)
@@ -107,6 +109,7 @@ class FoodOut(BaseModel):
     cook_id: int
     name: str
     description: str
+    ingredients: str = ""
     photo: str | None
     price: float
     category: str
@@ -221,6 +224,17 @@ class PriceSuggestionOut(BaseModel):
     verdict_label: str
     price_score: int
     summary: str
+    regional_avg_price: float
+    seasonal_market_price: float
+    season_name: str
+    season_factor: float
+    ingredient_cost: float
+    labor_cost: float
+    cook_minimum: float
+    cook_margin_percent: float
+    region_label: str
+    ingredient_items: list[str]
+    buyer_savings_hint: str
 
 
 class FoodEvaluationOut(BaseModel):

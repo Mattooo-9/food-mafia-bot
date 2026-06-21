@@ -841,3 +841,16 @@ body {
   border: 1px solid rgba(139, 92, 246, 0.25);
   font-size: 13px;
 }
+
+.ai-price-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--hint);
+}
+
+.ai-price-meta span {
+  white-space: nowrap;
+}

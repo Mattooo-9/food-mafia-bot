@@ -9,6 +9,7 @@ from backend.api.schemas import (
     RecommendationOut,
 )
 from backend.services import ai_analyst_service, analytics_service, food_service
+from backend.services.analytics_service import region_key
 from backend.services.food_service import FoodError
 
 router = APIRouter(tags=["ai"])
@@ -21,7 +22,11 @@ async def get_market_overview(user: CurrentUser, session: SessionDep) -> MarketO
         lat=user.lat,
         lon=user.lon,
     )
-    cached = await ai_analyst_service.get_cached_market(session)
+    cached = await ai_analyst_service.get_cached_market(
+        session, region_key=region_key(user.lat, user.lon)
+    )
+    if not cached:
+        cached = await ai_analyst_service.get_cached_market(session, region_key="global")
     insights = [
         MarketInsightOut(
             category=s.category,
@@ -68,7 +73,8 @@ async def get_market_overview(user: CurrentUser, session: SessionDep) -> MarketO
         top_category=overview.top_category,
         insights=insights,
         analyst_note=(
-            "ИИ-аналитик изучает цены, отзывы и заказы на платформе и обновляет оценки автоматически."
+            "ИИ учитывает реальные цены в вашем районе, сезон и расходники — "
+            "чтобы было выгодно и повару, и покупателю."
         ),
     )
 
@@ -76,10 +82,25 @@ async def get_market_overview(user: CurrentUser, session: SessionDep) -> MarketO
 @router.get("/ai/price-suggestion", response_model=PriceSuggestionOut)
 async def price_suggestion(
     category: str,
+    user: CurrentUser,
     session: SessionDep,
     price: float | None = Query(default=None, ge=0),
+    ingredients: str = Query(default=""),
+    portions: int = Query(default=1, ge=1, le=100),
+    cooking_time_minutes: int = Query(default=30, ge=1, le=1440),
+    name: str = Query(default=""),
 ) -> PriceSuggestionOut:
-    data = await ai_analyst_service.get_price_suggestion(session, category, price)
+    data = await ai_analyst_service.get_price_suggestion(
+        session,
+        category,
+        lat=user.lat,
+        lon=user.lon,
+        current_price=price,
+        ingredients=ingredients,
+        portions=portions,
+        cooking_time_minutes=cooking_time_minutes,
+        dish_name=name,
+    )
     return PriceSuggestionOut(**data)
 
 

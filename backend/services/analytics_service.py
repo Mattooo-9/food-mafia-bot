@@ -44,10 +44,14 @@ def _median(values: list[float]) -> float:
     return (s[mid - 1] + s[mid]) / 2
 
 
-def _region_key(lat: float | None, lon: float | None) -> str:
+def region_key(lat: float | None, lon: float | None) -> str:
     if lat is None or lon is None:
         return "global"
     return f"{round(lat, 1)}_{round(lon, 1)}"
+
+
+def _region_key(lat: float | None, lon: float | None) -> str:
+    return region_key(lat, lon)
 
 
 async def _active_foods_in_radius(
@@ -183,3 +187,25 @@ def demand_index(stats: CategoryStats) -> float:
 
 def competition_index(dish_count: int) -> float:
     return round(min(100, dish_count * 8), 1)
+
+
+async def get_regional_category_stats(
+    session: AsyncSession,
+    category: str,
+    lat: float | None,
+    lon: float | None,
+    radius_m: float,
+) -> tuple[CategoryStats | None, str]:
+    """Stats for category in user's region; falls back to global average."""
+    label = "ваш район" if lat is not None and lon is not None else "платформа"
+    overview = await get_market_overview(session, lat, lon, radius_m)
+    stats = next((c for c in overview.categories if c.category == category), None)
+    if stats and stats.dish_count >= 2:
+        return stats, label
+
+    global_overview = await get_market_overview(session, None, None, radius_m=50_000_000)
+    global_stats = next((c for c in global_overview.categories if c.category == category), None)
+    if global_stats and global_stats.dish_count >= 1:
+        return global_stats, "средняя по платформе" if lat else "платформа"
+    return stats or global_stats, label
+
