@@ -1,65 +1,65 @@
-import { useEffect, useState } from "react";
-import { api, formatStars } from "../api";
+import { useEffect, useRef, useState } from "react";
+import { api } from "../api";
 import type { PriceSuggestion } from "../types";
 
 interface Props {
   category: string;
   price: string;
-  ingredients: string;
-  portions: string;
-  cookingTime: string;
+  description: string;
   name: string;
+  portions: string;
+  autoFill?: boolean;
+  onSuggest: (stars: number) => void;
 }
 
 export default function AiPriceHint({
   category,
   price,
-  ingredients,
-  portions,
-  cookingTime,
+  description,
   name,
+  portions,
+  autoFill = false,
+  onSuggest,
 }: Props) {
   const [hint, setHint] = useState<PriceSuggestion | null>(null);
+  const autoDone = useRef(false);
 
   useEffect(() => {
-    if (!category) return;
+    if (!category || name.trim().length < 2) {
+      setHint(null);
+      return;
+    }
     const priceNum = Number(price);
     const timer = setTimeout(() => {
       void api
         .getPriceSuggestion(category, {
           price: priceNum > 0 ? priceNum : undefined,
-          ingredients,
-          portions: Math.max(1, Number(portions) || 1),
-          cooking_time_minutes: Math.max(1, Number(cookingTime) || 30),
+          description,
           name,
+          portions: Math.max(1, Number(portions) || 1),
         })
-        .then(setHint)
+        .then((h) => {
+          setHint(h);
+          if (autoFill && !autoDone.current && priceNum <= 0 && h.recommended_price > 0) {
+            autoDone.current = true;
+            onSuggest(h.recommended_price);
+          }
+        })
         .catch(() => setHint(null));
-    }, 450);
+    }, 500);
     return () => clearTimeout(timer);
-  }, [category, price, ingredients, portions, cookingTime, name]);
+  }, [category, price, description, name, portions, autoFill, onSuggest]);
 
   if (!hint) return null;
 
   return (
-    <div className="ai-price-hint">
-      <strong>🤖 {hint.verdict_label}</strong>
-      <div className="ai-price-meta">
-        <span>{hint.region_label}: ~{formatStars(hint.regional_avg_price)}</span>
-        <span>{hint.season_name} ×{hint.season_factor.toFixed(2)}</span>
-        <span>Расходники ~{formatStars(hint.ingredient_cost)}</span>
-      </div>
-      <p className="hint" style={{ margin: "6px 0 0" }}>
-        Рекомендуем: <b>{formatStars(hint.suggested_price_min)} – {formatStars(hint.suggested_price_max)}</b>
-        {" · "}
-        мин. для повара {formatStars(hint.cook_minimum)} (маржа ~{hint.cook_margin_percent}%)
-      </p>
-      {hint.ingredient_items.length > 0 && (
-        <p className="hint" style={{ margin: "4px 0 0", fontSize: 11 }}>
-          {hint.ingredient_items.join(" · ")}
-        </p>
+    <div className="ai-price-hint ai-price-simple">
+      <p>{hint.simple_message || hint.summary}</p>
+      {Number(price) !== hint.recommended_price && (
+        <button type="button" className="btn small ai-apply-btn" onClick={() => onSuggest(hint.recommended_price)}>
+          ✨ Поставить {hint.recommended_price} ⭐
+        </button>
       )}
-      <p style={{ margin: "6px 0 0", fontSize: 13 }}>{hint.buyer_savings_hint}</p>
     </div>
   );
 }

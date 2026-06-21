@@ -842,15 +842,29 @@ body {
   font-size: 13px;
 }
 
-.ai-price-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 12px;
-  margin-top: 6px;
-  font-size: 11px;
-  color: var(--hint);
+.ai-price-simple p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
 }
 
-.ai-price-meta span {
-  white-space: nowrap;
+.ai-apply-btn {
+  margin-top: 10px;
+  width: 100%;
+}
+
+.ai-card-simple {
+  padding: 14px 16px;
+}
+
+.ai-eval-simple {
+  padding: 12px 14px;
+  margin-top: 12px;
+  border: 1px solid rgba(0, 212, 255, 0.2);
+}
+
+.ai-eval-simple p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
 }

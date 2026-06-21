@@ -39,20 +39,16 @@ export const api = {
     category: string,
     opts?: {
       price?: number;
-      ingredients?: string;
-      portions?: number;
-      cooking_time_minutes?: number;
+      description?: string;
       name?: string;
+      portions?: number;
     },
   ) => {
     const params = new URLSearchParams({ category });
     if (opts?.price != null && opts.price > 0) params.set("price", String(opts.price));
-    if (opts?.ingredients) params.set("ingredients", opts.ingredients);
-    if (opts?.portions != null) params.set("portions", String(opts.portions));
-    if (opts?.cooking_time_minutes != null) {
-      params.set("cooking_time_minutes", String(opts.cooking_time_minutes));
-    }
+    if (opts?.description) params.set("description", opts.description);
     if (opts?.name) params.set("name", opts.name);
+    if (opts?.portions != null) params.set("portions", String(opts.portions));
     return request<PriceSuggestion>(`/api/ai/price-suggestion?${params}`);
   },
   getFoodEvaluation: (foodId: number) =>

@@ -132,7 +132,8 @@ async def evaluate_food(
     rec = pricing_engine.compute_fair_price(
         regional_avg,
         food.category,
-        ingredients=food.ingredients or food.description,
+        ingredients=food.ingredients,
+        description=food.description,
         portions=max(food.portions, 1),
         cooking_time_minutes=food.cooking_time_minutes,
         current_price=food.price,
@@ -168,7 +169,7 @@ async def evaluate_food(
     ev.suggested_price_min = rec.suggested_price_min
     ev.suggested_price_max = rec.suggested_price_max
     ev.summary = summary
-    ev.buyer_tip = rec.buyer_savings_hint or buyer_tip
+    ev.buyer_tip = rec.simple_message or rec.buyer_savings_hint or buyer_tip
     ev.updated_at = datetime.now(timezone.utc)
     return ev
 
@@ -269,8 +270,9 @@ async def get_price_suggestion(
     lon: float | None = None,
     current_price: float | None = None,
     ingredients: str = "",
+    description: str = "",
     portions: int = 1,
-    cooking_time_minutes: int = 30,
+    cooking_time_minutes: int | None = None,
     dish_name: str = "",
 ) -> dict:
     stats, region_label = await analytics_service.get_regional_category_stats(
@@ -288,6 +290,7 @@ async def get_price_suggestion(
         regional_avg,
         category,
         ingredients=ingredients,
+        description=description,
         portions=portions,
         cooking_time_minutes=cooking_time_minutes,
         current_price=current_price,
@@ -303,7 +306,7 @@ async def get_price_suggestion(
         "verdict": rec.verdict,
         "verdict_label": VERDICT_LABELS.get(rec.verdict, rec.verdict),
         "price_score": rec.price_score,
-        "summary": rec.summary,
+        "summary": rec.simple_message,
         "regional_avg_price": rec.regional_avg_price,
         "seasonal_market_price": rec.seasonal_market_price,
         "season_name": rec.season_name,
@@ -315,6 +318,8 @@ async def get_price_suggestion(
         "region_label": rec.region_label,
         "ingredient_items": rec.ingredient_items,
         "buyer_savings_hint": rec.buyer_savings_hint,
+        "recommended_price": rec.recommended_price,
+        "simple_message": rec.simple_message,
     }
 
 

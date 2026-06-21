@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from backend.models import FOOD_CATEGORIES, Food, User
+from backend.services.pricing_engine import auto_ingredients_text, infer_cooking_minutes
 from backend.utils.geo import haversine_m
 
 
@@ -37,6 +38,7 @@ async def create_food(
         raise FoodError("Сначала создайте профиль повара")
     if category not in FOOD_CATEGORIES:
         raise FoodError("Неизвестная категория")
+    auto_ing = auto_ingredients_text(name, description, category)
     food = Food(
         cook_id=cook.id,
         name=name.strip(),
@@ -44,9 +46,9 @@ async def create_food(
         price=round(price, 2),
         category=category,
         portions=portions,
-        cooking_time_minutes=cooking_time_minutes,
+        cooking_time_minutes=cooking_time_minutes or infer_cooking_minutes(category),
         photo=photo,
-        ingredients=ingredients.strip()[:2000],
+        ingredients=(ingredients.strip() or auto_ing)[:2000],
     )
     session.add(food)
     await session.commit()
@@ -78,6 +80,8 @@ async def update_food(session: AsyncSession, cook: User, food_id: int, data: dic
             if field in ("name", "description", "ingredients"):
                 value = str(value).strip()
             setattr(food, field, value)
+    if "name" in data or "description" in data:
+        food.ingredients = auto_ingredients_text(food.name, food.description, food.category)[:2000]
     await session.commit()
     await session.refresh(food)
     return food

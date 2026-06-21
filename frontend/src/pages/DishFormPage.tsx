@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, ApiError } from "../api";
 import Spinner from "../components/Spinner";
@@ -18,13 +18,16 @@ export default function DishFormPage() {
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [ingredients, setIngredients] = useState("");
   const [price, setPrice] = useState("");
   const [category, setCategory] = useState("");
   const [portions, setPortions] = useState("1");
-  const [cookingTime, setCookingTime] = useState("30");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [existingPhoto, setExistingPhoto] = useState<string | null>(null);
+
+  const applyPrice = useCallback((stars: number) => {
+    setPrice(String(stars));
+    haptic("success");
+  }, []);
 
   useEffect(() => {
     void api.getCategories().then((r) => {
@@ -41,11 +44,9 @@ export default function DishFormPage() {
       .then((food) => {
         setName(food.name);
         setDescription(food.description);
-        setIngredients(food.ingredients ?? "");
         setPrice(String(food.price));
         setCategory(food.category);
         setPortions(String(food.portions));
-        setCookingTime(String(food.cooking_time_minutes));
         setExistingPhoto(food.photo);
       })
       .finally(() => setLoading(false));
@@ -58,7 +59,7 @@ export default function DishFormPage() {
     }
     const priceNum = Number(price);
     if (!priceNum || priceNum <= 0) {
-      setError("Укажите корректную цену");
+      setError("Укажите цену или нажмите «Поставить» от ИИ");
       return;
     }
     setSaving(true);
@@ -71,11 +72,10 @@ export default function DishFormPage() {
       const payload = {
         name: name.trim(),
         description: description.trim(),
-        ingredients: ingredients.trim(),
         price: priceNum,
         category,
         portions: Math.max(0, Number(portions) || 0),
-        cooking_time_minutes: Math.max(1, Number(cookingTime) || 30),
+        cooking_time_minutes: 30,
         ...(photoUrl ? { photo: photoUrl } : {}),
       };
       if (isNew) {
@@ -99,7 +99,10 @@ export default function DishFormPage() {
 
   return (
     <div className="page">
-      <h1 className="page-title">{isNew ? "Новое блюдо ➕" : "Редактирование ✏️"}</h1>
+      <h1 className="page-title">{isNew ? "Новое блюдо" : "Редактирование"}</h1>
+      <p className="hint" style={{ margin: "0 4px 12px" }}>
+        ИИ сам посчитает справедливую цену — вам нужно только название и описание
+      </p>
       <div className="card">
         <div className="field">
           <label>Название</label>
@@ -111,31 +114,7 @@ export default function DishFormPage() {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             maxLength={2000}
-            placeholder="Состав, особенности, условия выдачи"
-          />
-        </div>
-        <div className="field">
-          <label>Расходники (через запятую)</label>
-          <textarea
-            value={ingredients}
-            onChange={(e) => setIngredients(e.target.value)}
-            placeholder="курица, картофель, лук, сметана"
-            maxLength={2000}
-          />
-          <p className="hint" style={{ marginTop: 4, fontSize: 11 }}>
-            ИИ посчитает себестоимость с учётом сезона и подскажет справедливую цену
-          </p>
-        </div>
-        <div className="field">
-          <label>Цена, ⭐</label>
-          <input type="number" min={1} value={price} onChange={(e) => setPrice(e.target.value)} placeholder="250" />
-          <AiPriceHint
-            category={category}
-            price={price}
-            ingredients={ingredients}
-            portions={portions}
-            cookingTime={cookingTime}
-            name={name}
+            placeholder="Из чего готовите, порция на сколько человек"
           />
         </div>
         <div className="field">
@@ -149,12 +128,21 @@ export default function DishFormPage() {
           </select>
         </div>
         <div className="field">
-          <label>Количество порций</label>
+          <label>Порций в наличии</label>
           <input type="number" min={0} value={portions} onChange={(e) => setPortions(e.target.value)} />
         </div>
         <div className="field">
-          <label>Время приготовления, мин</label>
-          <input type="number" min={1} value={cookingTime} onChange={(e) => setCookingTime(e.target.value)} />
+          <label>Цена, ⭐</label>
+          <input type="number" min={1} value={price} onChange={(e) => setPrice(e.target.value)} placeholder="ИИ подскажет" />
+          <AiPriceHint
+            category={category}
+            price={price}
+            description={description}
+            name={name}
+            portions={portions}
+            autoFill={isNew}
+            onSuggest={applyPrice}
+          />
         </div>
         <div className="field">
           <label>Фото</label>

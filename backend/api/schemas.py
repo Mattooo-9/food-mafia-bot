@@ -235,6 +235,8 @@ class PriceSuggestionOut(BaseModel):
     region_label: str
     ingredient_items: list[str]
     buyer_savings_hint: str
+    recommended_price: int
+    simple_message: str
 
 
 class FoodEvaluationOut(BaseModel):
@@ -250,6 +252,7 @@ class FoodEvaluationOut(BaseModel):
     suggested_price_max: float
     summary: str
     buyer_tip: str
+    simple_tip: str = ""
 
 
 class RecommendationOut(BaseModel):

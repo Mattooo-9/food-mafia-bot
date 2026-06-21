@@ -72,10 +72,7 @@ async def get_market_overview(user: CurrentUser, session: SessionDep) -> MarketO
         avg_rating=overview.avg_rating,
         top_category=overview.top_category,
         insights=insights,
-        analyst_note=(
-            "ИИ учитывает реальные цены в вашем районе, сезон и расходники — "
-            "чтобы было выгодно и повару, и покупателю."
-        ),
+        analyst_note="ИИ сам следит за ценами рядом и подсказывает выгодные блюда.",
     )
 
 
@@ -86,8 +83,9 @@ async def price_suggestion(
     session: SessionDep,
     price: float | None = Query(default=None, ge=0),
     ingredients: str = Query(default=""),
+    description: str = Query(default=""),
     portions: int = Query(default=1, ge=1, le=100),
-    cooking_time_minutes: int = Query(default=30, ge=1, le=1440),
+    cooking_time_minutes: int | None = Query(default=None, ge=1, le=1440),
     name: str = Query(default=""),
 ) -> PriceSuggestionOut:
     data = await ai_analyst_service.get_price_suggestion(
@@ -97,6 +95,7 @@ async def price_suggestion(
         lon=user.lon,
         current_price=price,
         ingredients=ingredients,
+        description=description,
         portions=portions,
         cooking_time_minutes=cooking_time_minutes,
         dish_name=name,
@@ -128,6 +127,7 @@ async def food_evaluation(food_id: int, session: SessionDep) -> FoodEvaluationOu
         suggested_price_max=ev.suggested_price_max,
         summary=ev.summary,
         buyer_tip=ev.buyer_tip,
+        simple_tip=ev.buyer_tip,
     )
 
 

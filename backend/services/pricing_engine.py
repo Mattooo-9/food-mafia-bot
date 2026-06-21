@@ -124,6 +124,48 @@ class PriceRecommendation:
     region_label: str
     cook_margin_percent: float
     buyer_savings_hint: str
+    recommended_price: int = 0
+    simple_message: str = ""
+
+
+def auto_ingredients_text(name: str, description: str, category: str) -> str:
+    """ИИ сам находит продукты в названии и описании — пользователю вводить не нужно."""
+    combined = f"{name} {description}".lower()
+    found: list[str] = []
+    for key in sorted(INGREDIENT_BASE_STARS, key=len, reverse=True):
+        if key in combined and key not in found:
+            found.append(key)
+    if found:
+        return ", ".join(found)
+    return combined.strip() or category
+
+
+def infer_cooking_minutes(category: str) -> int:
+    defaults = {
+        "Супы": 75,
+        "Горячее": 55,
+        "Салаты": 20,
+        "Десерты": 45,
+        "Выпечка": 50,
+        "Завтраки": 25,
+        "Закуски": 30,
+        "Напитки": 15,
+        "Другое": 35,
+    }
+    return defaults.get(category, 30)
+
+
+def simple_price_message(rec: "PriceRecommendation", has_price: bool) -> str:
+    p = rec.recommended_price or max(1, int(round(rec.fair_price)))
+    if not has_price:
+        return f"ИИ рекомендует {p} ⭐ — учтены район, сезон и продукты"
+    if rec.verdict in ("fair", "underpriced"):
+        return f"Цена ок · рынок ~{p} ⭐"
+    if rec.verdict == "below_cost":
+        return f"Лучше поставить от {p} ⭐ — иначе в минус"
+    if rec.verdict == "premium":
+        return f"Чуть выше рынка · обычно ~{p} ⭐"
+    return f"Дороговато · в районе {p} ⭐ выгоднее всем"
 
 
 def _price_verdict(price: float, fair: float, cook_min: float) -> tuple[str, int]:
@@ -146,8 +188,9 @@ def compute_fair_price(
     category: str,
     *,
     ingredients: str = "",
+    description: str = "",
     portions: int = 1,
-    cooking_time_minutes: int = 30,
+    cooking_time_minutes: int | None = None,
     current_price: float | None = None,
     month: int | None = None,
     region_label: str = "ваш регион",
@@ -156,21 +199,16 @@ def compute_fair_price(
     month = month or datetime.now(timezone.utc).month
     season = month_to_season(month)
     season_factor = category_season_factor(category, month)
+    cook_mins = cooking_time_minutes if cooking_time_minutes is not None else infer_cooking_minutes(category)
+    merged_ingredients = ingredients.strip() or auto_ingredients_text(dish_name, description, category)
 
-    # Реальная средняя по региону; если мало данных — используем категорийный ориентир.
     if regional_avg <= 0:
         regional_avg = CATEGORY_BASE_COST.get(category, 50) * 1.35
 
     seasonal_market = round(regional_avg * season_factor, 2)
 
-    # Себестоимость: расходники + сезон + труд.
-    ing = estimate_ingredient_cost(
-        ingredients or dish_name,
-        category,
-        portions,
-        month,
-    )
-    labor = labor_cost_stars(cooking_time_minutes)
+    ing = estimate_ingredient_cost(merged_ingredients, category, portions, month)
+    labor = labor_cost_stars(cook_mins)
     cook_minimum = round(ing.total_cost + labor * 1.1, 2)  # +10% на упаковку/газ
 
     # Справедливая цена: повар не в убытке, покупатель не переплачивает рынок.
@@ -211,7 +249,9 @@ def compute_fair_price(
     if ing.items and not ing.used_fallback:
         summary_parts.insert(3, f"Состав: {ing_note}.")
 
-    return PriceRecommendation(
+    recommended = max(1, int(round(fair)))
+    has_price = current_price is not None and current_price > 0
+    rec = PriceRecommendation(
         regional_avg_price=round(regional_avg, 2),
         seasonal_market_price=seasonal_market,
         season_name=season,
@@ -229,4 +269,8 @@ def compute_fair_price(
         region_label=region_label,
         cook_margin_percent=margin,
         buyer_savings_hint=buyer_hint,
+        recommended_price=recommended,
+        simple_message="",
     )
+    rec.simple_message = simple_price_message(rec, has_price)
+    return rec

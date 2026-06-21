@@ -119,6 +119,8 @@ export interface PriceSuggestion {
   region_label: string;
   ingredient_items: string[];
   buyer_savings_hint: string;
+  recommended_price: number;
+  simple_message: string;
 }
 
 export interface FoodEvaluation {
@@ -134,6 +136,7 @@ export interface FoodEvaluation {
   suggested_price_max: number;
   summary: string;
   buyer_tip: string;
+  simple_tip?: string;
 }
 
 export interface Recommendation {
