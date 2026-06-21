@@ -1,5 +1,5 @@
 from aiogram import Router
-from aiogram.filters import Command, CommandStart
+from aiogram.filters import Command, CommandStart, CommandObject
 from aiogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -37,13 +37,24 @@ def webapp_keyboard() -> InlineKeyboardMarkup | None:
     )
 
 
+def _parse_ref(command: CommandObject | None) -> str | None:
+    if not command or not command.args:
+        return None
+    arg = command.args.strip()
+    if arg.startswith("ref_"):
+        return arg[4:]
+    return None
+
+
 @router.message(CommandStart())
-async def cmd_start(message: Message) -> None:
+async def cmd_start(message: Message, command: CommandObject) -> None:
     tg = message.from_user
+    ref_code = _parse_ref(command)
     async with async_session_factory() as session:
-        await user_service.get_or_create_user(
+        user, is_new = await user_service.get_or_create_user(
             session,
             TelegramUser(tg_id=tg.id, username=tg.username, first_name=tg.first_name),
+            ref_code,
         )
 
     text = (
@@ -52,6 +63,9 @@ async def cmd_start(message: Message) -> None:
         "🍲 Открой приложение — поиск, заказы, оплата, рейтинги.\n"
         "📍 Отправь геолокацию, чтобы видеть блюда рядом."
     )
+    if is_new and user.referred_by_id:
+        text += f"\n\n🎁 Бонус {settings.referral_referee_bonus:.0f} ₽ после первого заказа!"
+
     markup = webapp_keyboard()
     if markup is None:
         text += "\n\n⚠️ Mini App ещё не подключено."
@@ -79,5 +93,6 @@ async def cmd_help(message: Message) -> None:
         "/become_cook — стать поваром\n\n"
         "📍 Геолокация — кнопка внизу или в профиле приложения.\n"
         "💳 Оплата — при заказе выбираете способ, расчёт при получении.\n"
+        "🎁 Рефералы — в профиле приложения, бонусы обоим.\n"
         "⭐ Отзыв — после доставки в разделе «Заказы»."
     )

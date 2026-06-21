@@ -13,7 +13,7 @@ async def handle_location(message: Message) -> None:
     tg = message.from_user
     location = message.location
     async with async_session_factory() as session:
-        user = await user_service.get_or_create_user(
+        user, _ = await user_service.get_or_create_user(
             session,
             TelegramUser(tg_id=tg.id, username=tg.username, first_name=tg.first_name),
         )

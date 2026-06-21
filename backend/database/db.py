@@ -52,6 +52,29 @@ async def _migrate_sqlite(conn) -> None:
             text("ALTER TABLE orders ADD COLUMN payment_status VARCHAR(16) NOT NULL DEFAULT 'PENDING'")
         )
         logger.info("Added orders.payment_status")
+    if "referral_discount" not in orders_cols:
+        conn.execute(
+            text("ALTER TABLE orders ADD COLUMN referral_discount FLOAT NOT NULL DEFAULT 0.0")
+        )
+        logger.info("Added orders.referral_discount")
+
+    users_cols = column_names("users")
+    if "referral_code" not in users_cols:
+        conn.execute(text("ALTER TABLE users ADD COLUMN referral_code VARCHAR(16)"))
+        logger.info("Added users.referral_code")
+    if "referred_by_id" not in users_cols:
+        conn.execute(text("ALTER TABLE users ADD COLUMN referred_by_id INTEGER"))
+        logger.info("Added users.referred_by_id")
+    if "referral_balance" not in users_cols:
+        conn.execute(
+            text("ALTER TABLE users ADD COLUMN referral_balance FLOAT NOT NULL DEFAULT 0.0")
+        )
+        logger.info("Added users.referral_balance")
+    if "referral_welcome_claimed" not in users_cols:
+        conn.execute(
+            text("ALTER TABLE users ADD COLUMN referral_welcome_claimed BOOLEAN NOT NULL DEFAULT 0")
+        )
+        logger.info("Added users.referral_welcome_claimed")
 
 
 async def init_db() -> None:

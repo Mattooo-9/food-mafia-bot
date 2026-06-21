@@ -116,6 +116,9 @@ export default function OrdersPage() {
               <span>{order.cook_name ?? "Повар"}</span>
               <span>{PAYMENT_METHOD_LABELS[order.payment_method]}</span>
               <span>{PAYMENT_STATUS_LABELS[order.payment_status]}</span>
+              {order.referral_discount > 0 && (
+                <span>−{formatPrice(order.referral_discount)} с баланса</span>
+              )}
               <span>{new Date(order.created_at).toLocaleString("ru-RU")}</span>
             </div>
             <div className="row between" style={{ marginTop: 8 }}>

@@ -2,10 +2,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models import User
+from backend.services import referral_service
 from backend.utils.telegram_auth import TelegramUser
 
 
-async def get_or_create_user(session: AsyncSession, tg_user: TelegramUser) -> User:
+async def get_or_create_user(
+    session: AsyncSession, tg_user: TelegramUser, ref_code: str | None = None
+) -> tuple[User, bool]:
     user = await get_user_by_tg_id(session, tg_user.tg_id)
     if user is None:
         user = User(
@@ -16,7 +19,10 @@ async def get_or_create_user(session: AsyncSession, tg_user: TelegramUser) -> Us
         session.add(user)
         await session.commit()
         await session.refresh(user)
-        return user
+        if ref_code:
+            await referral_service.attach_referrer(session, user, ref_code)
+        await referral_service.ensure_referral_code(session, user)
+        return user, True
 
     changed = False
     if user.username != tg_user.username:
@@ -27,7 +33,8 @@ async def get_or_create_user(session: AsyncSession, tg_user: TelegramUser) -> Us
         changed = True
     if changed:
         await session.commit()
-    return user
+    await referral_service.ensure_referral_code(session, user)
+    return user, False
 
 
 async def get_user_by_tg_id(session: AsyncSession, tg_id: int) -> User | None:

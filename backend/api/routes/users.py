@@ -1,8 +1,8 @@
 from fastapi import APIRouter
 
 from backend.api.deps import CurrentUser, SessionDep
-from backend.api.schemas import CategoriesOut, CookProfileIn, LocationIn, UserOut
-from backend.services import user_service
+from backend.api.schemas import CategoriesOut, CookProfileIn, LocationIn, ReferralOut, UserOut
+from backend.services import referral_service, user_service
 
 router = APIRouter(tags=["users"])
 
@@ -31,6 +31,12 @@ async def upsert_cook_profile(
         is_online=payload.is_online,
     )
     return UserOut.model_validate(updated)
+
+
+@router.get("/me/referral", response_model=ReferralOut)
+async def get_my_referral(user: CurrentUser, session: SessionDep) -> ReferralOut:
+    info = await referral_service.get_referral_info(session, user)
+    return ReferralOut(**info)
 
 
 @router.get("/categories", response_model=CategoriesOut)

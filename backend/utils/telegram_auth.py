@@ -17,6 +17,14 @@ class TelegramUser:
     first_name: str | None
 
 
+def parse_start_param(init_data: str) -> str | None:
+    try:
+        pairs = dict(parse_qsl(init_data, strict_parsing=True))
+    except ValueError:
+        return None
+    return pairs.get("start_param")
+
+
 def validate_init_data(init_data: str, bot_token: str, max_age_seconds: int) -> TelegramUser:
     """Validate Telegram Mini App initData string (HMAC-SHA256 per Telegram docs)."""
     if not init_data:

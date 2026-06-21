@@ -33,6 +33,7 @@ class Order(Base):
     payment_status: Mapped[str] = mapped_column(
         String(16), default=PaymentStatus.PENDING.value, nullable=False
     )
+    referral_discount: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

@@ -66,7 +66,7 @@ async def _finish_registration(message: Message, state: FSMContext, photo_url: s
     data = await state.get_data()
     tg = message.from_user
     async with async_session_factory() as session:
-        user = await user_service.get_or_create_user(
+        user, _ = await user_service.get_or_create_user(
             session,
             TelegramUser(tg_id=tg.id, username=tg.username, first_name=tg.first_name),
         )

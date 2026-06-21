@@ -82,6 +82,8 @@ def _order_summary(order: Order, food: Food) -> str:
         f"💰 {order.total_price:.2f} ₽",
         f"💳 {pay}",
     ]
+    if order.referral_discount > 0:
+        lines.append(f"🎁 Скидка с баланса: −{order.referral_discount:.2f} ₽")
     if order.comment:
         lines.append(f"💬 {order.comment}")
     return "\n".join(lines)
@@ -114,6 +116,24 @@ async def notify_cook_status(order: Order, food: Food, cook: User) -> None:
     label = STATUS_LABELS.get(order.status, order.status)
     text = f"Заказ #{order.id} — статус: {label}\n🍽 {food.name} × {order.quantity}"
     await _send(cook.tg_id, text, reply_markup=cook_order_keyboard(order))
+
+
+async def notify_referral_rewards(
+    buyer: User, referrer: User | None, referee_bonus: float, referrer_bonus: float
+) -> None:
+    await _send(
+        buyer.tg_id,
+        f"🎁 <b>+{referee_bonus:.0f} ₽</b> на баланс за первый заказ!\n"
+        "Используйте при следующем заказе в приложении.",
+    )
+    if referrer is None:
+        return
+    name = buyer.first_name or buyer.username or "друг"
+    await _send(
+        referrer.tg_id,
+        f"🎁 <b>+{referrer_bonus:.0f} ₽</b> на ваш баланс!\n"
+        f"{name} оформил первый заказ по вашей ссылке.",
+    )
 
 
 async def notify_subscribers_new_food(session: AsyncSession, food: Food, cook: User) -> None:

@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 from backend.config import settings
 from backend.models import Food, Order, OrderStatus, PlatformBalance, User
 from backend.models.enums import ORDER_TRANSITIONS, PaymentMethod, PaymentStatus
-from backend.services import notification_service
+from backend.services import notification_service, referral_service
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +67,14 @@ async def create_order(
     if payment_method not in {m.value for m in PaymentMethod}:
         raise OrderError("Неизвестный способ оплаты")
 
-    total_price = round(food.price * quantity, 2)
+    gross = round(food.price * quantity, 2)
+    referral_discount = referral_service.calc_referral_discount(buyer, gross)
+    max_discount = round(max(gross - 1.0, 0.0), 2)
+    referral_discount = round(min(referral_discount, max_discount), 2)
+    total_price = round(gross - referral_discount, 2)
+    if referral_discount > 0:
+        buyer.referral_balance = round(buyer.referral_balance - referral_discount, 2)
+
     order = Order(
         buyer_id=buyer.id,
         cook_id=food.cook_id,
@@ -78,6 +85,7 @@ async def create_order(
         comment=comment.strip()[:512],
         payment_method=payment_method,
         payment_status=PaymentStatus.PENDING.value,
+        referral_discount=referral_discount,
     )
     food.portions -= quantity
     session.add(order)
@@ -119,6 +127,10 @@ async def change_status(
         food = await session.get(Food, order.food_id)
         if food is not None:
             food.portions += order.quantity
+        if order.referral_discount > 0:
+            await referral_service.restore_referral_discount(
+                session, order.buyer, order.referral_discount
+            )
 
     if new_status == OrderStatus.DELIVERED:
         food = await session.get(Food, order.food_id)
@@ -126,6 +138,7 @@ async def change_status(
             food.orders_count += 1
         order.payment_status = PaymentStatus.PAID.value
         await _accrue_platform_commission(session, order)
+        await referral_service.on_order_delivered(session, order)
 
     await session.commit()
     order = await get_order(session, order_id)

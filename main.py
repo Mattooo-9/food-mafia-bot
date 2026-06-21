@@ -8,7 +8,7 @@ from aiogram.exceptions import TelegramAPIError
 from aiogram.types import BotCommand, MenuButtonWebApp, Update, WebAppInfo
 from fastapi import FastAPI, HTTPException, Request
 
-from backend.api.app import create_app
+from backend.bot_info import set_bot_username
 from backend.bot_instance import bot
 from backend.config import settings
 from backend.database import init_db
@@ -43,6 +43,9 @@ async def apply_menu_button() -> None:
         logger.warning("WEBAPP_URL is not set — Mini App button is not configured")
         return
     try:
+        me = await bot.get_me()
+        if me.username:
+            set_bot_username(me.username)
         await bot.set_my_commands(
             [
                 BotCommand(command="start", description="Главное меню"),

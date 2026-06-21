@@ -33,6 +33,17 @@ class UserOut(BaseModel):
     is_online: bool
     rating_avg: float
     rating_count: int
+    referral_balance: float = 0.0
+
+
+class ReferralOut(BaseModel):
+    balance: float
+    code: str
+    invited_count: int
+    link: str
+    max_discount_percent: int
+    referee_bonus: float
+    referrer_bonus: float
 
 
 class CookOut(BaseModel):
@@ -118,6 +129,7 @@ class OrderOut(BaseModel):
     comment: str
     payment_method: str
     payment_status: str
+    referral_discount: float = 0.0
     created_at: datetime
     food_name: str = ""
     food_photo: str | None = None

@@ -78,6 +78,10 @@ class Settings(BaseSettings):
     fallback_urls: str = Field(default="", validation_alias="BACKEND_URLS")
     platform_commission_rate: float = 0.01
 
+    referral_referrer_bonus: float = 50.0
+    referral_referee_bonus: float = 30.0
+    referral_max_discount_rate: float = 0.15
+
     log_level: str = "INFO"
 
 

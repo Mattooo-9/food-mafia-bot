@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { api, ApiError, formatDistance, formatPrice } from "../api";
+import { api, ApiError, calcReferralDiscount, formatDistance, formatPrice, REFERRAL_MAX_DISCOUNT_PERCENT } from "../api";
 import Spinner from "../components/Spinner";
 import Stars from "../components/Stars";
 import { PAYMENT_METHODS } from "../constants";
 import { haptic, showAlert } from "../telegram";
 import type { Food, PaymentMethod, Review } from "../types";
+import { useUser } from "../UserContext";
 
 export default function FoodPage() {
+  const { user } = useUser();
   const { id } = useParams();
   const navigate = useNavigate();
   const [food, setFood] = useState<Food | null>(null);
@@ -73,6 +75,11 @@ export default function FoodPage() {
   };
 
   const maxQty = Math.max(food.portions, 0);
+  const gross = food.price * quantity;
+  const referralDiscount = user
+    ? calcReferralDiscount(user.referral_balance, gross, REFERRAL_MAX_DISCOUNT_PERCENT)
+    : 0;
+  const total = gross - referralDiscount;
 
   return (
     <div className="page">
@@ -175,8 +182,13 @@ export default function FoodPage() {
           </div>
 
           <button className="btn" disabled={submitting} onClick={() => void order()}>
-            {submitting ? "Оформляем..." : `Заказать · ${formatPrice(food.price * quantity)}`}
+            {submitting ? "Оформляем..." : `Заказать · ${formatPrice(total)}`}
           </button>
+          {referralDiscount > 0 && (
+            <p className="hint" style={{ marginTop: 8, textAlign: "center" }}>
+              С баланса: −{formatPrice(referralDiscount)}
+            </p>
+          )}
           {error && <div className="error-text">{error}</div>}
         </div>
       )}

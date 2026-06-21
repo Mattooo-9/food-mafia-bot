@@ -15,6 +15,17 @@ export interface User {
   is_online: boolean;
   rating_avg: number;
   rating_count: number;
+  referral_balance: number;
+}
+
+export interface ReferralInfo {
+  balance: number;
+  code: string;
+  invited_count: number;
+  link: string;
+  max_discount_percent: number;
+  referee_bonus: number;
+  referrer_bonus: number;
 }
 
 export interface Food {
@@ -64,6 +75,7 @@ export interface Order {
   comment: string;
   payment_method: PaymentMethod;
   payment_status: PaymentStatus;
+  referral_discount: number;
   created_at: string;
   food_name: string;
   food_photo: string | null;

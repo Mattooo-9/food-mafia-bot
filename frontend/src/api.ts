@@ -1,5 +1,5 @@
 import { getInitData } from "./telegram";
-import type { Cook, Food, FoodFilters, Order, OrderStatus, PaymentMethod, Review, User } from "./types";
+import type { Cook, Food, FoodFilters, Order, OrderStatus, PaymentMethod, ReferralInfo, Review, User } from "./types";
 
 export class ApiError extends Error {
   status: number;
@@ -33,6 +33,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 export const api = {
   getMe: () => request<User>("/api/me"),
+  getReferral: () => request<ReferralInfo>("/api/me/referral"),
   setLocation: (lat: number, lon: number) =>
     request<User>("/api/me/location", { method: "POST", body: JSON.stringify({ lat, lon }) }),
   updateCookProfile: (data: {
@@ -114,6 +115,18 @@ export function formatDistance(meters: number | null): string {
   if (meters < 1000) return `${Math.round(meters)} м`;
   return `${(meters / 1000).toFixed(1)} км`;
 }
+
+export function calcReferralDiscount(
+  balance: number,
+  gross: number,
+  maxPercent: number,
+): number {
+  const cap = gross * (maxPercent / 100);
+  const maxAllowed = Math.max(gross - 1, 0);
+  return Math.round(Math.min(balance, cap, maxAllowed) * 100) / 100;
+}
+
+export const REFERRAL_MAX_DISCOUNT_PERCENT = 15;
 
 export function formatPrice(price: number): string {
   return `${price.toLocaleString("ru-RU", { maximumFractionDigits: 2 })} ₽`;

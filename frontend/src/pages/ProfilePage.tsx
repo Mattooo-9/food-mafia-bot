@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, ApiError } from "../api";
+import ReferralCard from "../components/ReferralCard";
 import LocationBar from "../components/LocationBar";
 import Spinner from "../components/Spinner";
 import Stars from "../components/Stars";
@@ -73,6 +74,8 @@ export default function ProfilePage() {
       <h1 className="page-title">Профиль</h1>
 
       <LocationBar />
+
+      <ReferralCard />
 
       <div className="card">
         <strong>{user.first_name ?? user.username ?? `id${user.tg_id}`}</strong>

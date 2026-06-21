@@ -15,6 +15,7 @@ interface TelegramWebApp {
   };
   onEvent?: (event: string, cb: () => void) => void;
   offEvent?: (event: string, cb: () => void) => void;
+  openTelegramLink?: (url: string) => void;
   showAlert?: (message: string) => void;
 }
 

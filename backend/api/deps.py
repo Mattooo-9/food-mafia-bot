@@ -7,7 +7,7 @@ from backend.config import settings
 from backend.database import get_session
 from backend.models import User
 from backend.services import user_service
-from backend.utils.telegram_auth import InitDataError, validate_init_data
+from backend.utils.telegram_auth import InitDataError, parse_start_param, validate_init_data
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 
@@ -27,7 +27,13 @@ async def get_current_user(
     except InitDataError as exc:
         raise HTTPException(status_code=401, detail=f"Невалидные данные авторизации: {exc}") from exc
 
-    return await user_service.get_or_create_user(session, tg_user)
+    ref_code: str | None = None
+    start = parse_start_param(x_telegram_init_data)
+    if start and start.startswith("ref_"):
+        ref_code = start[4:]
+
+    user, _ = await user_service.get_or_create_user(session, tg_user, ref_code)
+    return user
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
