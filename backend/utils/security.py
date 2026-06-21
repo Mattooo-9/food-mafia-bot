@@ -6,7 +6,6 @@ from backend.config import settings
 
 SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
-    "X-Frame-Options": "DENY",
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "Permissions-Policy": "geolocation=(self), camera=(), microphone=()",
     "Content-Security-Policy": (
@@ -15,7 +14,7 @@ SECURITY_HEADERS = {
         "style-src 'self' 'unsafe-inline'; "
         "img-src 'self' data: blob: https:; "
         "connect-src 'self' https:; "
-        "frame-ancestors 'none'"
+        "frame-ancestors https://web.telegram.org https://*.telegram.org 'self'"
     ),
 }
 
