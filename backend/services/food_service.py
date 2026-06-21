@@ -18,7 +18,7 @@ class FoodWithDistance:
     distance_m: float | None
 
 
-FEED_TYPES = ["nearby", "new", "popular", "cheap", "fast"]
+FEED_TYPES = ["cheap", "fast", "nearby", "new", "popular"]
 
 
 async def create_food(
@@ -120,7 +120,12 @@ async def search_foods(
         select(Food)
         .options(selectinload(Food.cook))
         .join(User, Food.cook_id == User.id)
-        .where(Food.is_active.is_(True), User.is_cook.is_(True))
+        .where(
+            Food.is_active.is_(True),
+            Food.portions > 0,
+            User.is_cook.is_(True),
+            User.is_online.is_(True),
+        )
     )
     if category:
         query = query.where(Food.category == category)
@@ -171,7 +176,7 @@ async def search_cooks(
     limit: int = 50,
     offset: int = 0,
 ) -> list[tuple[User, float | None]]:
-    query = select(User).where(User.is_cook.is_(True))
+    query = select(User).where(User.is_cook.is_(True), User.is_online.is_(True))
     if min_rating is not None:
         query = query.where(User.rating_avg >= min_rating)
     result = await session.execute(query)

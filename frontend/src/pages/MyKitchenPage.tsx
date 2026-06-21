@@ -1,27 +1,15 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, ApiError, formatPrice } from "../api";
 import Spinner from "../components/Spinner";
 import StatusBadge from "../components/StatusBadge";
+import { COOK_ORDER_ACTIONS, KITCHEN_TABS, ORDER_STATUS_RANK } from "../constants";
 import { haptic, showAlert } from "../telegram";
 import type { Food, Order, OrderStatus } from "../types";
 
-const NEXT_ACTIONS: Partial<Record<OrderStatus, { status: OrderStatus; label: string }[]>> = {
-  NEW: [
-    { status: "ACCEPTED", label: "✅ Принять" },
-    { status: "CANCELLED", label: "❌ Отклонить" },
-  ],
-  ACCEPTED: [
-    { status: "COOKING", label: "🍳 Готовлю" },
-    { status: "CANCELLED", label: "❌ Отменить" },
-  ],
-  COOKING: [{ status: "READY", label: "🍱 Готово" }],
-  READY: [{ status: "DELIVERED", label: "📦 Выдан" }],
-};
-
 export default function MyKitchenPage() {
   const navigate = useNavigate();
-  const [tab, setTab] = useState<"orders" | "foods">("orders");
+  const [tab, setTab] = useState<(typeof KITCHEN_TABS)[number]["id"]>("orders");
   const [foods, setFoods] = useState<Food[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,6 +28,23 @@ export default function MyKitchenPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const sortedActiveOrders = useMemo(() => {
+    const active = orders.filter((o) => !["DELIVERED", "CANCELLED"].includes(o.status));
+    return [...active].sort((a, b) => {
+      const rank = ORDER_STATUS_RANK[a.status] - ORDER_STATUS_RANK[b.status];
+      if (rank !== 0) return rank;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+  }, [orders]);
+
+  const pastOrders = useMemo(
+    () =>
+      orders
+        .filter((o) => ["DELIVERED", "CANCELLED"].includes(o.status))
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
+    [orders],
+  );
 
   const changeStatus = async (order: Order, status: OrderStatus) => {
     try {
@@ -73,29 +78,31 @@ export default function MyKitchenPage() {
 
   if (loading) return <Spinner />;
 
-  const activeOrders = orders.filter((o) => !["DELIVERED", "CANCELLED"].includes(o.status));
-  const pastOrders = orders.filter((o) => ["DELIVERED", "CANCELLED"].includes(o.status));
-
   return (
     <div className="page">
-      <h1 className="page-title">Моя кухня 🧑‍🍳</h1>
+      <h1 className="page-title">Моя кухня</h1>
       <div className="chips">
-        <button className={`chip ${tab === "orders" ? "active" : ""}`} onClick={() => setTab("orders")}>
-          📦 Заказы ({activeOrders.length})
-        </button>
-        <button className={`chip ${tab === "foods" ? "active" : ""}`} onClick={() => setTab("foods")}>
-          🍲 Блюда ({foods.length})
-        </button>
+        {KITCHEN_TABS.map((t) => (
+          <button
+            key={t.id}
+            className={`chip ${tab === t.id ? "active" : ""}`}
+            onClick={() => setTab(t.id)}
+          >
+            {t.label}
+            {t.id === "orders" ? ` (${sortedActiveOrders.length})` : ` (${foods.length})`}
+          </button>
+        ))}
       </div>
 
       {tab === "orders" && (
         <>
-          {activeOrders.length === 0 && (
+          {sortedActiveOrders.length === 0 && (
             <div className="empty">
-              <span className="emoji">📭</span>Активных заказов нет
+              <span className="emoji">📭</span>
+              Активных заказов нет
             </div>
           )}
-          {activeOrders.map((order) => (
+          {sortedActiveOrders.map((order) => (
             <div className="card" key={order.id}>
               <div className="row between">
                 <strong>
@@ -113,7 +120,7 @@ export default function MyKitchenPage() {
                 <span className="food-price">{formatPrice(order.total_price)}</span>
               </div>
               <div className="btn-row">
-                {(NEXT_ACTIONS[order.status] ?? []).map((action) => (
+                {(COOK_ORDER_ACTIONS[order.status] ?? []).map((action) => (
                   <button
                     key={action.status}
                     className={`btn small ${action.status === "CANCELLED" ? "danger" : ""}`}
@@ -151,12 +158,13 @@ export default function MyKitchenPage() {
       {tab === "foods" && (
         <>
           <button className="btn" onClick={() => navigate("/my-kitchen/dish/new")}>
-            ➕ Добавить блюдо
+            Добавить блюдо
           </button>
           <div style={{ height: 10 }} />
           {foods.length === 0 && (
             <div className="empty">
-              <span className="emoji">🍳</span>Добавьте своё первое блюдо
+              <span className="emoji">🍳</span>
+              Добавьте своё первое блюдо
             </div>
           )}
           {foods.map((food) => (
@@ -170,7 +178,7 @@ export default function MyKitchenPage() {
               <div className="food-meta" style={{ marginTop: 6 }}>
                 <span>{food.category}</span>
                 <span>{formatPrice(food.price)}</span>
-                <span>🛒 заказов: {food.orders_count}</span>
+                <span>заказов: {food.orders_count}</span>
               </div>
               <div className="row between" style={{ marginTop: 10 }}>
                 <span>Порции:</span>
@@ -182,13 +190,13 @@ export default function MyKitchenPage() {
               </div>
               <div className="btn-row">
                 <button className="btn small secondary" onClick={() => navigate(`/my-kitchen/dish/${food.id}`)}>
-                  ✏️ Изменить
+                  Изменить
                 </button>
                 <button className="btn small secondary" onClick={() => void toggleActive(food)}>
-                  {food.is_active ? "🙈 Скрыть" : "👁 Показать"}
+                  {food.is_active ? "Скрыть" : "Показать"}
                 </button>
                 <button className="btn small danger" onClick={() => void removeFood(food)}>
-                  🗑
+                  Удалить
                 </button>
               </div>
             </div>

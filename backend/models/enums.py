@@ -20,14 +20,17 @@ ORDER_TRANSITIONS: dict[OrderStatus, list[OrderStatus]] = {
     OrderStatus.CANCELLED: [],
 }
 
-FOOD_CATEGORIES: list[str] = [
-    "Горячее",
-    "Супы",
-    "Салаты",
-    "Выпечка",
-    "Десерты",
-    "Завтраки",
-    "Напитки",
-    "Закуски",
-    "Другое",
-]
+FOOD_CATEGORIES: list[str] = sorted(
+    [
+        "Выпечка",
+        "Горячее",
+        "Десерты",
+        "Завтраки",
+        "Закуски",
+        "Напитки",
+        "Салаты",
+        "Супы",
+        "Другое",
+    ],
+    key=lambda c: (c == "Другое", c),
+)

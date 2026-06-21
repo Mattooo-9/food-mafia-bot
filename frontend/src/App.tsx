@@ -15,14 +15,22 @@ import { UserProvider, useUser } from "./UserContext";
 function AppInner() {
   const { user, loading, error } = useUser();
 
-  if (loading) return <Spinner />;
+  if (loading) {
+    return (
+      <div className="app-loading">
+        <span className="logo">🍲</span>
+        <Spinner />
+      </div>
+    );
+  }
 
   if (error || !user) {
     return (
-      <div className="empty">
+      <div className="error-screen">
         <span className="emoji">🔒</span>
-        {error ?? "Откройте приложение через Telegram"}
-        <p className="hint">Запустите бота и нажмите кнопку «Открыть Еда Рядом».</p>
+        <h1>Еда Рядом</h1>
+        <p>{error ?? "Откройте приложение через Telegram"}</p>
+        <p className="hint">Запустите бота и нажмите «Открыть Еда Рядом».</p>
       </div>
     );
   }

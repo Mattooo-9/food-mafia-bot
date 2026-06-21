@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, ApiError } from "../api";
 import Spinner from "../components/Spinner";
+import { sortRu } from "../constants";
 import { haptic, showAlert } from "../telegram";
 
 export default function DishFormPage() {
@@ -25,8 +26,9 @@ export default function DishFormPage() {
 
   useEffect(() => {
     void api.getCategories().then((r) => {
-      setCategories(r.categories);
-      if (isNew) setCategory((prev) => prev || r.categories[0]);
+      const sorted = sortRu(r.categories);
+      setCategories(sorted);
+      if (isNew) setCategory((prev) => prev || sorted[0]);
     });
   }, [isNew]);
 

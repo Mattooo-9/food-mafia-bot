@@ -13,6 +13,8 @@ interface TelegramWebApp {
     onClick: (cb: () => void) => void;
     offClick: (cb: () => void) => void;
   };
+  onEvent?: (event: string, cb: () => void) => void;
+  offEvent?: (event: string, cb: () => void) => void;
   showAlert?: (message: string) => void;
 }
 
@@ -24,11 +26,17 @@ declare global {
 
 export const tg: TelegramWebApp | undefined = window.Telegram?.WebApp;
 
+function applyTheme(): void {
+  if (!tg) return;
+  document.documentElement.dataset.theme = tg.colorScheme;
+}
+
 export function initTelegram(): void {
   if (!tg) return;
   tg.ready();
   tg.expand();
-  document.documentElement.dataset.theme = tg.colorScheme;
+  applyTheme();
+  tg.onEvent?.("themeChanged", applyTheme);
 }
 
 export function getInitData(): string {

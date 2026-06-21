@@ -1,44 +1,23 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 import FoodCard from "../components/FoodCard";
 import Spinner from "../components/Spinner";
+import { DISTANCES, FEEDS, RATINGS, sortRu } from "../constants";
 import { haptic } from "../telegram";
 import type { Food, FoodFilters, FeedType } from "../types";
 import { useUser } from "../UserContext";
 
-const FEEDS: { id: FeedType; label: string }[] = [
-  { id: "nearby", label: "📍 Рядом со мной" },
-  { id: "new", label: "🆕 Новые" },
-  { id: "popular", label: "🔥 Популярное" },
-  { id: "cheap", label: "💸 Дешёвое" },
-  { id: "fast", label: "⚡ Быстрые" },
-];
-
-const DISTANCES: { value: number | null; label: string }[] = [
-  { value: null, label: "Любое расстояние" },
-  { value: 500, label: "500 м" },
-  { value: 1000, label: "1 км" },
-  { value: 3000, label: "3 км" },
-  { value: 5000, label: "5 км" },
-  { value: 10000, label: "10 км" },
-];
-
-const RATINGS: { value: number | null; label: string }[] = [
-  { value: null, label: "Любой рейтинг" },
-  { value: 3, label: "3+" },
-  { value: 4, label: "4+" },
-  { value: 4.5, label: "4.5+" },
-];
-
 export default function FeedPage() {
   const { user, requestLocation } = useUser();
+  const hasLocation = user?.lat != null;
+
   const [filters, setFilters] = useState<FoodFilters>({
-    feed: "nearby",
     category: null,
+    feed: hasLocation ? "nearby" : "new",
     max_distance_m: null,
-    price_min: null,
-    price_max: null,
     min_rating: null,
+    price_max: null,
+    price_min: null,
   });
   const [categories, setCategories] = useState<string[]>([]);
   const [foods, setFoods] = useState<Food[]>([]);
@@ -46,19 +25,30 @@ export default function FeedPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [priceMax, setPriceMax] = useState("");
 
+  const effectiveFeed: FeedType =
+    filters.feed === "nearby" && !hasLocation ? "new" : filters.feed;
+
+  const sortedCategories = useMemo(() => sortRu(categories), [categories]);
+
   useEffect(() => {
     void api.getCategories().then((r) => setCategories(r.categories));
   }, []);
 
+  useEffect(() => {
+    if (!hasLocation && filters.feed === "nearby") {
+      setFilters((prev) => ({ ...prev, feed: "new" }));
+    }
+  }, [hasLocation, filters.feed]);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const result = await api.getFoods(filters);
+      const result = await api.getFoods({ ...filters, feed: effectiveFeed });
       setFoods(result);
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, [filters, effectiveFeed]);
 
   useEffect(() => {
     void load();
@@ -76,15 +66,13 @@ export default function FeedPage() {
     );
   };
 
-  const hasLocation = user?.lat != null;
-
   return (
     <div className="page">
-      <h1 className="page-title">Еда Рядом 🍲</h1>
+      <h1 className="page-title">Еда Рядом</h1>
 
       {!hasLocation && (
         <div className="banner">
-          📍 Геолокация не указана — лента «рядом» недоступна.{" "}
+          Геолокация не указана — показываем новые блюда.{" "}
           <button className="btn small" onClick={() => void requestLocation()}>
             Определить
           </button>
@@ -95,7 +83,7 @@ export default function FeedPage() {
         {FEEDS.map((f) => (
           <button
             key={f.id}
-            className={`chip ${filters.feed === f.id ? "active" : ""}`}
+            className={`chip ${effectiveFeed === f.id ? "active" : ""}`}
             onClick={() => setFilters((prev) => ({ ...prev, feed: f.id }))}
           >
             {f.label}
@@ -105,7 +93,7 @@ export default function FeedPage() {
 
       <div className="chips">
         <button className="chip" onClick={() => setShowFilters((v) => !v)}>
-          ⚙️ Фильтры {showFilters ? "▲" : "▼"}
+          Фильтры {showFilters ? "▲" : "▼"}
         </button>
         <button
           className={`chip ${filters.category === null ? "active" : ""}`}
@@ -113,7 +101,7 @@ export default function FeedPage() {
         >
           Все
         </button>
-        {categories.map((c) => (
+        {sortedCategories.map((c) => (
           <button
             key={c}
             className={`chip ${filters.category === c ? "active" : ""}`}

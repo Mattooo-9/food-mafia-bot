@@ -3,15 +3,50 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#0a0f1a" />
     <title>Еда Рядом</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script type="module" crossorigin src="/assets/index-DpylUR96.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-BEDPv0AP.css">
+    <style>
+      body {
+        margin: 0;
+        background: #0a0f1a;
+        color: #8b95a8;
+        font-family: "Segoe UI", sans-serif;
+      }
+      .boot {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        min-height: 100vh;
+      }
+      .boot-icon {
+        font-size: 48px;
+        animation: pulse 2s ease-in-out infinite;
+      }
+      @keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.06); opacity: 0.85; }
+      }
+      .boot-spinner {
+        width: 32px;
+        height: 32px;
+        border: 3px solid rgba(139, 149, 168, 0.2);
+        border-top-color: #00d4ff;
+        border-radius: 50%;
+        animation: spin 0.75s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+    <script type="module" crossorigin src="/assets/index-C5ztcWZ1.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-C_x9ZOoa.css">
   </head>
   <body>
     <div id="root">
-      <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;color:#666">
-        Загрузка…
+      <div class="boot">
+        <span class="boot-icon">🍲</span>
+        <div class="boot-spinner"></div>
       </div>
     </div>
   </body>

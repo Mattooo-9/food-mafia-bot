@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, ApiError, formatPrice } from "../api";
 import Spinner from "../components/Spinner";
 import StatusBadge from "../components/StatusBadge";
+import { ORDER_STATUS_RANK } from "../constants";
 import { haptic, showAlert } from "../telegram";
 import type { Order } from "../types";
 
@@ -71,6 +72,16 @@ export default function OrdersPage() {
     void load();
   }, [load]);
 
+  const sortedOrders = useMemo(
+    () =>
+      [...orders].sort((a, b) => {
+        const rank = ORDER_STATUS_RANK[a.status] - ORDER_STATUS_RANK[b.status];
+        if (rank !== 0) return rank;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      }),
+    [orders],
+  );
+
   const cancel = async (order: Order) => {
     try {
       await api.cancelOrder(order.id);
@@ -92,7 +103,7 @@ export default function OrdersPage() {
           <span className="emoji">🛒</span>Вы ещё ничего не заказывали
         </div>
       ) : (
-        orders.map((order) => (
+        sortedOrders.map((order) => (
           <div className="card" key={order.id}>
             <div className="row between">
               <strong>

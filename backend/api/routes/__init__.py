@@ -3,11 +3,11 @@ from fastapi import APIRouter
 from backend.api.routes import cooks, favorites, foods, orders, reviews, subscriptions, uploads, users
 
 api_router = APIRouter(prefix="/api")
-api_router.include_router(users.router)
-api_router.include_router(foods.router)
 api_router.include_router(cooks.router)
+api_router.include_router(favorites.router)
+api_router.include_router(foods.router)
 api_router.include_router(orders.router)
 api_router.include_router(reviews.router)
-api_router.include_router(favorites.router)
 api_router.include_router(subscriptions.router)
 api_router.include_router(uploads.router)
+api_router.include_router(users.router)
