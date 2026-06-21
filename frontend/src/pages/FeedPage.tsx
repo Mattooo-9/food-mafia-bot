@@ -90,12 +90,10 @@ export default function FeedPage() {
       )}
 
       <LocationBar />
-      {hasLocation && (
-        <DistanceSlider
-          value={filters.max_distance_m ?? DEFAULT_DISTANCE}
-          onChange={(max_distance_m) => setFilters((prev) => ({ ...prev, max_distance_m }))}
-        />
-      )}
+      <DistanceSlider
+        value={filters.max_distance_m ?? DEFAULT_DISTANCE}
+        onChange={(max_distance_m) => setFilters((prev) => ({ ...prev, max_distance_m }))}
+      />
 
       <CategoryColumn
         groups={categoryTree}

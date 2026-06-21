@@ -1,28 +1,33 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
 import CookCard from "../components/CookCard";
+import DistanceSlider from "../components/DistanceSlider";
 import LocationBar from "../components/LocationBar";
 import SearchBar from "../components/SearchBar";
 import Spinner from "../components/Spinner";
-import { DISTANCES, RATINGS } from "../constants";
 import { haptic } from "../telegram";
 import type { Cook } from "../types";
+import { useUser } from "../UserContext";
+
+const DEFAULT_DISTANCE = 3000;
 
 export default function CooksPage() {
+  const { user } = useUser();
+  const hasLocation = user?.lat != null;
+
   const [cooks, setCooks] = useState<Cook[]>([]);
   const [loading, setLoading] = useState(true);
-  const [maxDistance, setMaxDistance] = useState<number | null>(null);
-  const [minRating, setMinRating] = useState<number | null>(null);
+  const [maxDistance, setMaxDistance] = useState(DEFAULT_DISTANCE);
   const [query, setQuery] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setCooks(await api.getCooks(maxDistance, minRating, query));
+      setCooks(await api.getCooks(hasLocation ? maxDistance : null, null, query));
     } finally {
       setLoading(false);
     }
-  }, [maxDistance, minRating, query]);
+  }, [hasLocation, maxDistance, query]);
 
   useEffect(() => {
     void load();
@@ -47,36 +52,14 @@ export default function CooksPage() {
       <SearchBar value={query} onChange={setQuery} placeholder="Имя кухни, повар…" />
       <LocationBar />
 
-      <div className="chips">
-        {DISTANCES.map((d) => (
-          <button
-            key={d.label}
-            className={`chip ${maxDistance === d.value ? "active" : ""}`}
-            onClick={() => setMaxDistance(d.value)}
-          >
-            {d.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="chips">
-        {RATINGS.map((r) => (
-          <button
-            key={r.label}
-            className={`chip ${minRating === r.value ? "active" : ""}`}
-            onClick={() => setMinRating(r.value)}
-          >
-            {r.label}
-          </button>
-        ))}
-      </div>
+      <DistanceSlider value={maxDistance} onChange={setMaxDistance} />
 
       {loading ? (
         <Spinner />
       ) : cooks.length === 0 ? (
         <div className="empty">
           <span className="emoji">👨‍🍳</span>
-          {query ? "Поваров не найдено" : "Поваров поблизости пока нет"}
+          {query ? "Поваров не найдено" : hasLocation ? "Поваров поблизости пока нет" : "Укажите геолокацию для поиска рядом"}
         </div>
       ) : (
         cooks.map((cook) => <CookCard key={cook.id} cook={cook} onToggleFavorite={toggleFavorite} />)

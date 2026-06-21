@@ -22,7 +22,7 @@ export default function DistanceSlider({ value, onChange }: Props) {
         max={MAX}
         step={STEP}
         value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
+        onInput={(e) => onChange(Number(e.currentTarget.value))}
         aria-label="Расстояние поиска"
       />
       <div className="distance-slider-labels">
