@@ -17,6 +17,22 @@ class CookProfileIn(BaseModel):
     is_online: bool | None = None
 
 
+class WalletIn(BaseModel):
+    ton_wallet_address: str | None = Field(default=None, max_length=128)
+
+
+class CurrencyOut(BaseModel):
+    currency: str = "XTR"
+    ton_per_star: float
+    referral_unit: str = "stars"
+
+
+class TonPaymentOut(BaseModel):
+    wallet_address: str
+    amount_ton: float
+    comment: str
+
+
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -34,6 +50,7 @@ class UserOut(BaseModel):
     rating_avg: float
     rating_count: int
     referral_balance: float = 0.0
+    ton_wallet_address: str | None = None
 
 
 class ReferralOut(BaseModel):
@@ -101,6 +118,7 @@ class FoodOut(BaseModel):
     cook_name: str | None = None
     cook_rating: float = 0.0
     cook_is_online: bool = False
+    cook_accepts_ton: bool = False
     distance_m: float | None = None
     is_favorite: bool = False
 
@@ -109,7 +127,7 @@ class OrderIn(BaseModel):
     food_id: int
     quantity: int = Field(ge=1, le=100)
     comment: str = Field(default="", max_length=512)
-    payment_method: PaymentMethod = PaymentMethod.CASH
+    payment_method: PaymentMethod = PaymentMethod.STARS
 
 
 class OrderStatusIn(BaseModel):
@@ -136,6 +154,8 @@ class OrderOut(BaseModel):
     cook_name: str | None = None
     buyer_name: str | None = None
     has_review: bool = False
+    invoice_link: str | None = None
+    ton_payment: TonPaymentOut | None = None
 
 
 class ReviewIn(BaseModel):

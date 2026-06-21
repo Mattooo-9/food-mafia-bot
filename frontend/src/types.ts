@@ -1,4 +1,4 @@
-export type PaymentMethod = "CASH" | "TRANSFER" | "CARD";
+export type PaymentMethod = "STARS" | "TON" | "CASH" | "TRANSFER" | "CARD";
 export type PaymentStatus = "PENDING" | "PAID";
 
 export interface User {
@@ -16,6 +16,7 @@ export interface User {
   rating_avg: number;
   rating_count: number;
   referral_balance: number;
+  ton_wallet_address: string | null;
 }
 
 export interface ReferralInfo {
@@ -44,6 +45,7 @@ export interface Food {
   cook_name: string | null;
   cook_rating: number;
   cook_is_online: boolean;
+  cook_accepts_ton: boolean;
   distance_m: number | null;
   is_favorite: boolean;
 }
@@ -64,6 +66,12 @@ export interface Cook {
 
 export type OrderStatus = "NEW" | "ACCEPTED" | "COOKING" | "READY" | "DELIVERED" | "CANCELLED";
 
+export interface TonPayment {
+  wallet_address: string;
+  amount_ton: number;
+  comment: string;
+}
+
 export interface Order {
   id: number;
   buyer_id: number;
@@ -82,6 +90,8 @@ export interface Order {
   cook_name: string | null;
   buyer_name: string | null;
   has_review: boolean;
+  invoice_link: string | null;
+  ton_payment: TonPayment | null;
 }
 
 export interface Review {

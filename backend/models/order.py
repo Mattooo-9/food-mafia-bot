@@ -28,7 +28,7 @@ class Order(Base):
     )
     comment: Mapped[str] = mapped_column(String(512), default="", nullable=False)
     payment_method: Mapped[str] = mapped_column(
-        String(16), default=PaymentMethod.CASH.value, nullable=False
+        String(16), default=PaymentMethod.STARS.value, nullable=False
     )
     payment_status: Mapped[str] = mapped_column(
         String(16), default=PaymentStatus.PENDING.value, nullable=False

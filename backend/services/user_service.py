@@ -4,6 +4,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.models import User
 from backend.services import referral_service
 from backend.utils.telegram_auth import TelegramUser
+from backend.utils.ton import is_valid_ton_address
+
+
+class WalletError(Exception):
+    pass
 
 
 async def get_or_create_user(
@@ -72,5 +77,19 @@ async def update_cook_profile(
         user.cook_photo = cook_photo
     if is_online is not None:
         user.is_online = is_online
+    await session.commit()
+    return user
+
+
+async def update_wallet(
+    session: AsyncSession, user: User, ton_wallet_address: str | None
+) -> User:
+    if ton_wallet_address is None or not ton_wallet_address.strip():
+        user.ton_wallet_address = None
+    else:
+        address = ton_wallet_address.strip()
+        if not is_valid_ton_address(address):
+            raise WalletError("Некорректный TON-адрес. Подключите кошелёк через TON Connect.")
+        user.ton_wallet_address = address
     await session.commit()
     return user

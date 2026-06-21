@@ -3,8 +3,8 @@ from fastapi import APIRouter, HTTPException
 from backend.api.deps import CurrentCook, CurrentUser, SessionDep
 from backend.api.schemas import OrderIn, OrderOut, OrderStatusIn
 from backend.api.serializers import serialize_order
-from backend.models import OrderStatus
-from backend.services import order_service, review_service
+from backend.models import OrderStatus, PaymentMethod
+from backend.services import order_service, payment_service, review_service
 from backend.services.order_service import OrderError
 
 router = APIRouter(tags=["orders"])
@@ -19,7 +19,15 @@ async def create_order(payload: OrderIn, user: CurrentUser, session: SessionDep)
         )
     except OrderError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return serialize_order(order)
+
+    invoice_link = None
+    ton_payment = None
+    if order.payment_method == PaymentMethod.STARS.value:
+        invoice_link = await payment_service.create_stars_invoice(order, order.food)
+    elif order.payment_method == PaymentMethod.TON.value:
+        ton_payment = payment_service.build_ton_payment(order, order.cook)
+
+    return serialize_order(order, invoice_link=invoice_link, ton_payment=ton_payment)
 
 
 @router.get("/orders", response_model=list[OrderOut])
@@ -53,6 +61,15 @@ async def change_order_status(
 async def cancel_order(order_id: int, user: CurrentUser, session: SessionDep) -> OrderOut:
     try:
         order = await order_service.change_status(session, order_id, OrderStatus.CANCELLED, user)
+    except OrderError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return serialize_order(order)
+
+
+@router.post("/orders/{order_id}/confirm-ton", response_model=OrderOut)
+async def confirm_ton_payment(order_id: int, user: CurrentUser, session: SessionDep) -> OrderOut:
+    try:
+        order = await order_service.confirm_ton_payment(session, order_id, user)
     except OrderError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return serialize_order(order)

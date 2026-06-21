@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, formatPrice } from "../api";
+import { api, formatStars } from "../api";
 import { haptic, showAlert, tg } from "../telegram";
 import type { ReferralInfo } from "../types";
 
@@ -14,7 +14,7 @@ export default function ReferralCard() {
 
   const share = () => {
     haptic();
-    const text = `Еда Рядом — домашняя еда рядом. Бонус ${info.referee_bonus} ₽ на первый заказ!`;
+    const text = `Еда Рядом — домашняя еда рядом. Бонус ${info.referee_bonus} ⭐ на первый заказ!`;
     const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(info.link)}&text=${encodeURIComponent(text)}`;
     if (tg?.openTelegramLink) {
       tg.openTelegramLink(shareUrl);
@@ -37,12 +37,12 @@ export default function ReferralCard() {
       <div className="referral-glow" />
       <strong className="referral-title">Пригласи друга</strong>
       <p className="hint referral-desc">
-        Друг — <b>{formatPrice(info.referee_bonus)}</b> после первого заказа · вы —{" "}
-        <b>{formatPrice(info.referrer_bonus)}</b>
+        Друг — <b>{formatStars(info.referee_bonus)}</b> после первого заказа · вы —{" "}
+        <b>{formatStars(info.referrer_bonus)}</b>
       </p>
       <div className="referral-stats">
         <span>
-          Баланс <strong>{formatPrice(info.balance)}</strong>
+          Баланс <strong>{formatStars(info.balance)}</strong>
         </span>
         <span>
           Приглашено <strong>{info.invited_count}</strong>

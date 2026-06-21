@@ -52,7 +52,7 @@ async def order_status_callback(callback: CallbackQuery) -> None:
             await callback.message.edit_text(
                 f"Заказ #{order.id}\n"
                 f"🍽 {order.food.name} × {order.quantity}\n"
-                f"💰 {order.total_price:.2f} ₽\n"
+                f"💰 {order.total_price:.0f} ⭐\n"
                 f"Статус: {label}",
                 reply_markup=cook_order_keyboard(order),
             )

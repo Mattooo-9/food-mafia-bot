@@ -111,7 +111,7 @@ export default function DishFormPage() {
           />
         </div>
         <div className="field">
-          <label>Цена, ₽</label>
+          <label>Цена, ⭐</label>
           <input type="number" min={1} value={price} onChange={(e) => setPrice(e.target.value)} placeholder="250" />
         </div>
         <div className="field">

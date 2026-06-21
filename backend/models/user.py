@@ -32,6 +32,7 @@ class User(Base):
     )
     referral_balance: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     referral_welcome_claimed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    ton_wallet_address: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

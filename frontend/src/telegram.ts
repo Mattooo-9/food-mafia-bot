@@ -16,6 +16,7 @@ interface TelegramWebApp {
   onEvent?: (event: string, cb: () => void) => void;
   offEvent?: (event: string, cb: () => void) => void;
   openTelegramLink?: (url: string) => void;
+  openInvoice?: (url: string, callback?: (status: string) => void) => void;
   showAlert?: (message: string) => void;
 }
 
@@ -54,4 +55,13 @@ export function showAlert(message: string): void {
   } else {
     alert(message);
   }
+}
+
+export function openInvoice(url: string, callback?: (status: string) => void): void {
+  if (tg?.openInvoice) {
+    tg.openInvoice(url, callback);
+    return;
+  }
+  window.open(url, "_blank");
+  callback?.("cancelled");
 }

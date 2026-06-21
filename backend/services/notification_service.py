@@ -74,16 +74,20 @@ def cook_order_keyboard(order: Order) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
+def _stars(amount: float) -> str:
+    return f"{amount:.0f} ⭐"
+
+
 def _order_summary(order: Order, food: Food) -> str:
     pay = PAYMENT_METHOD_LABELS.get(order.payment_method, order.payment_method)
     lines = [
         f"Заказ #{order.id}",
         f"🍽 {food.name} × {order.quantity}",
-        f"💰 {order.total_price:.2f} ₽",
+        f"💰 {_stars(order.total_price)}",
         f"💳 {pay}",
     ]
     if order.referral_discount > 0:
-        lines.append(f"🎁 Скидка с баланса: −{order.referral_discount:.2f} ₽")
+        lines.append(f"🎁 Скидка с баланса: −{_stars(order.referral_discount)}")
     if order.comment:
         lines.append(f"💬 {order.comment}")
     return "\n".join(lines)
@@ -104,7 +108,7 @@ async def notify_buyer_status(order: Order, food: Food, buyer: User) -> None:
         OrderStatus.ACCEPTED.value: "Повар принял ваш заказ!",
         OrderStatus.COOKING.value: "Повар начал готовить ваш заказ.",
         OrderStatus.READY.value: "Ваш заказ готов к выдаче! 🎉",
-        OrderStatus.DELIVERED.value: "Заказ завершён. Оплата получена. Оцените повара в приложении!",
+        OrderStatus.DELIVERED.value: "Заказ завершён. Спасибо! Оцените повара в приложении.",
         OrderStatus.CANCELLED.value: "Заказ отменён.",
     }
     header = headers.get(order.status, "Статус заказа изменён.")
@@ -118,12 +122,28 @@ async def notify_cook_status(order: Order, food: Food, cook: User) -> None:
     await _send(cook.tg_id, text, reply_markup=cook_order_keyboard(order))
 
 
+async def notify_buyer_stars_paid(order: Order, food: Food, buyer: User) -> None:
+    text = (
+        f"✅ <b>Оплата прошла!</b>\n\n{_order_summary(order, food)}\n"
+        "Повар получил заказ и скоро ответит."
+    )
+    await _send(buyer.tg_id, text)
+
+
+async def notify_buyer_ton_paid(order: Order, food: Food, buyer: User) -> None:
+    text = (
+        f"✅ <b>TON отправлен!</b>\n\n{_order_summary(order, food)}\n"
+        "Повар получил заказ и скоро ответит."
+    )
+    await _send(buyer.tg_id, text)
+
+
 async def notify_referral_rewards(
     buyer: User, referrer: User | None, referee_bonus: float, referrer_bonus: float
 ) -> None:
     await _send(
         buyer.tg_id,
-        f"🎁 <b>+{referee_bonus:.0f} ₽</b> на баланс за первый заказ!\n"
+        f"🎁 <b>+{_stars(referee_bonus)}</b> на баланс за первый заказ!\n"
         "Используйте при следующем заказе в приложении.",
     )
     if referrer is None:
@@ -131,7 +151,7 @@ async def notify_referral_rewards(
     name = buyer.first_name or buyer.username or "друг"
     await _send(
         referrer.tg_id,
-        f"🎁 <b>+{referrer_bonus:.0f} ₽</b> на ваш баланс!\n"
+        f"🎁 <b>+{_stars(referrer_bonus)}</b> на ваш баланс!\n"
         f"{name} оформил первый заказ по вашей ссылке.",
     )
 
@@ -148,7 +168,7 @@ async def notify_subscribers_new_food(session: AsyncSession, food: Food, cook: U
     cook_name = cook.cook_name or cook.first_name or "Повар"
     text = (
         f"🍽 <b>{cook_name}</b> добавил новое блюдо!\n\n"
-        f"<b>{food.name}</b> — {food.price:.2f} ₽\n{food.description}"
+        f"<b>{food.name}</b> — {_stars(food.price)}\n{food.description}"
     )
     for tg_id in tg_ids:
         await _send(tg_id, text)

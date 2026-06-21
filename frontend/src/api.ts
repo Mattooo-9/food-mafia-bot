@@ -33,7 +33,13 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 export const api = {
   getMe: () => request<User>("/api/me"),
+  getCurrency: () => request<{ currency: string; ton_per_star: number; referral_unit: string }>("/api/currency"),
   getReferral: () => request<ReferralInfo>("/api/me/referral"),
+  setWallet: (ton_wallet_address: string | null) =>
+    request<User>("/api/me/wallet", {
+      method: "POST",
+      body: JSON.stringify({ ton_wallet_address }),
+    }),
   setLocation: (lat: number, lon: number) =>
     request<User>("/api/me/location", { method: "POST", body: JSON.stringify({ lat, lon }) }),
   updateCookProfile: (data: {
@@ -84,6 +90,8 @@ export const api = {
   changeOrderStatus: (id: number, status: OrderStatus) =>
     request<Order>(`/api/orders/${id}/status`, { method: "POST", body: JSON.stringify({ status }) }),
   cancelOrder: (id: number) => request<Order>(`/api/orders/${id}/cancel`, { method: "POST" }),
+  confirmTonPayment: (id: number) =>
+    request<Order>(`/api/orders/${id}/confirm-ton`, { method: "POST" }),
 
   createReview: (order_id: number, rating: number, text: string) =>
     request<Review>("/api/reviews", { method: "POST", body: JSON.stringify({ order_id, rating, text }) }),
@@ -129,6 +137,16 @@ export function calcReferralDiscount(
   return Math.round(Math.min(bal, cap, maxAllowed) * 100) / 100;
 }
 
+export function formatStars(amount: number): string {
+  const n = Math.round(amount);
+  return `${n.toLocaleString("ru-RU")} ⭐`;
+}
+
+export function formatTon(amount: number): string {
+  return `${amount.toLocaleString("ru-RU", { maximumFractionDigits: 6 })} TON`;
+}
+
+/** @deprecated use formatStars */
 export function formatPrice(price: number): string {
-  return `${price.toLocaleString("ru-RU", { maximumFractionDigits: 2 })} ₽`;
+  return formatStars(price);
 }

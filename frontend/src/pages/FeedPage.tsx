@@ -154,7 +154,7 @@ export default function FeedPage() {
             </select>
           </div>
           <div className="field">
-            <label>Цена до, ₽</label>
+            <label>Цена до, ⭐</label>
             <input
               type="number"
               min={0}

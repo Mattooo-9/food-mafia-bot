@@ -1,29 +1,41 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { api, ApiError, calcReferralDiscount, formatDistance, formatPrice } from "../api";
+import { useTonConnectUI, useTonWallet } from "@tonconnect/ui-react";
+import {
+  api,
+  ApiError,
+  calcReferralDiscount,
+  formatDistance,
+  formatStars,
+  formatTon,
+} from "../api";
 import Spinner from "../components/Spinner";
 import Stars from "../components/Stars";
 import { PAYMENT_METHODS } from "../constants";
-import { haptic, showAlert } from "../telegram";
-import type { Food, PaymentMethod, ReferralInfo, Review } from "../types";
+import { haptic, openInvoice, showAlert } from "../telegram";
+import type { Food, PaymentMethod, ReferralInfo, Review, TonPayment } from "../types";
 import { useUser } from "../UserContext";
 
 export default function FoodPage() {
   const { user, refresh } = useUser();
   const { id } = useParams();
   const navigate = useNavigate();
+  const [tonConnectUI] = useTonConnectUI();
+  const tonWallet = useTonWallet();
   const [food, setFood] = useState<Food | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [comment, setComment] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("STARS");
+  const [tonPerStar, setTonPerStar] = useState(0.004);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [referral, setReferral] = useState<ReferralInfo | null>(null);
 
   useEffect(() => {
     void api.getReferral().then(setReferral).catch(() => setReferral(null));
+    void api.getCurrency().then((c) => setTonPerStar(c.ton_per_star)).catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -53,20 +65,72 @@ export default function FoodPage() {
     );
   }
 
+  const payWithTon = async (orderId: number, tonPayment: TonPayment) => {
+    const nanoTon = Math.ceil(tonPayment.amount_ton * 1e9);
+    await tonConnectUI.sendTransaction({
+      validUntil: Math.floor(Date.now() / 1000) + 600,
+      messages: [
+        {
+          address: tonPayment.wallet_address,
+          amount: String(nanoTon),
+        },
+      ],
+    });
+    await api.confirmTonPayment(orderId);
+  };
+
   const order = async () => {
     setSubmitting(true);
     setError(null);
     try {
-      await api.createOrder(food.id, quantity, comment, paymentMethod);
-      haptic("success");
-      await refresh();
-      showAlert("Заказ оформлен! Расчёт — при получении.");
-      navigate("/orders");
+      if (paymentMethod === "TON" && !tonWallet) {
+        await tonConnectUI.openModal();
+        setError("Подключите TON-кошелёк для оплаты");
+        setSubmitting(false);
+        return;
+      }
+
+      const created = await api.createOrder(food.id, quantity, comment, paymentMethod);
+
+      if (paymentMethod === "STARS" && created.invoice_link) {
+        openInvoice(created.invoice_link, async (status) => {
+          if (status === "paid") {
+            haptic("success");
+            await refresh();
+            showAlert("Оплачено! Повар получил заказ.");
+            navigate("/orders");
+          } else if (status === "failed" || status === "cancelled") {
+            haptic("error");
+            try {
+              await api.cancelOrder(created.id);
+            } catch {
+              // ignore
+            }
+            setError("Оплата отменена");
+            setSubmitting(false);
+          }
+        });
+        return;
+      }
+
+      if (paymentMethod === "TON" && created.ton_payment) {
+        await payWithTon(created.id, created.ton_payment);
+        haptic("success");
+        await refresh();
+        showAlert("TON отправлен! Повар получил заказ.");
+        navigate("/orders");
+        return;
+      }
+
+      haptic("error");
+      setError("Не удалось подготовить оплату");
     } catch (e) {
       haptic("error");
       setError(e instanceof ApiError ? e.message : "Не удалось оформить заказ");
     } finally {
-      setSubmitting(false);
+      if (paymentMethod !== "STARS") {
+        setSubmitting(false);
+      }
     }
   };
 
@@ -86,6 +150,7 @@ export default function FoodPage() {
   const balance = user?.referral_balance ?? referral?.balance ?? 0;
   const referralDiscount = calcReferralDiscount(balance, gross, maxDiscountPercent);
   const total = Math.round((gross - referralDiscount) * 100) / 100;
+  const tonEstimate = Math.round(total * tonPerStar * 1e6) / 1e6;
 
   return (
     <div className="page">
@@ -111,7 +176,7 @@ export default function FoodPage() {
         </div>
         {food.description && <p>{food.description}</p>}
         <div className="food-price" style={{ fontSize: 22 }}>
-          {formatPrice(food.price)}
+          {formatStars(food.price)}
         </div>
         <p className="hint">
           {food.portions > 0 ? `Доступно порций: ${food.portions}` : "Порции закончились"}
@@ -164,17 +229,27 @@ export default function FoodPage() {
           <div className="field" style={{ marginTop: 12 }}>
             <label>Способ оплаты</label>
             <div className="chips" style={{ paddingBottom: 0 }}>
-              {PAYMENT_METHODS.map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  className={`chip ${paymentMethod === m.id ? "active" : ""}`}
-                  onClick={() => setPaymentMethod(m.id)}
-                >
-                  {m.label}
-                </button>
-              ))}
+              {PAYMENT_METHODS.map((m) => {
+                const disabled = m.id === "TON" && !food.cook_accepts_ton;
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    className={`chip ${paymentMethod === m.id ? "active" : ""}`}
+                    disabled={disabled}
+                    onClick={() => setPaymentMethod(m.id)}
+                    title={disabled ? "Повар ещё не подключил TON-кошелёк" : undefined}
+                  >
+                    {m.label}
+                  </button>
+                );
+              })}
             </div>
+            {paymentMethod === "TON" && (
+              <p className="hint" style={{ marginTop: 8 }}>
+                ≈ {formatTon(tonEstimate)} · оплата через ваш TON-кошелёк
+              </p>
+            )}
           </div>
 
           <div className="field">
@@ -188,11 +263,11 @@ export default function FoodPage() {
           </div>
 
           <button className="btn" disabled={submitting} onClick={() => void order()}>
-            {submitting ? "Оформляем..." : `Заказать · ${formatPrice(total)}`}
+            {submitting ? "Оформляем..." : `Заказать · ${formatStars(total)}`}
           </button>
           {referralDiscount > 0 && (
             <p className="hint" style={{ marginTop: 8, textAlign: "center" }}>
-              С баланса: −{formatPrice(referralDiscount)}
+              С баланса: −{formatStars(referralDiscount)}
             </p>
           )}
           {error && <div className="error-text">{error}</div>}

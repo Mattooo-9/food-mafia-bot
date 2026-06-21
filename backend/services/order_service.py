@@ -9,6 +9,7 @@ from backend.config import settings
 from backend.models import Food, Order, OrderStatus, PlatformBalance, User
 from backend.models.enums import ORDER_TRANSITIONS, PaymentMethod, PaymentStatus
 from backend.services import notification_service, referral_service
+from backend.utils.ton import is_valid_ton_address
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +39,7 @@ async def create_order(
     food_id: int,
     quantity: int,
     comment: str = "",
-    payment_method: str = "CASH",
+    payment_method: str = PaymentMethod.STARS.value,
 ) -> Order:
     if quantity < 1:
         raise OrderError("Количество должно быть не меньше 1")
@@ -66,6 +67,10 @@ async def create_order(
 
     if payment_method not in {m.value for m in PaymentMethod}:
         raise OrderError("Неизвестный способ оплаты")
+    if payment_method == PaymentMethod.TON.value:
+        wallet = (food.cook.ton_wallet_address or "").strip()
+        if not is_valid_ton_address(wallet):
+            raise OrderError("Повар ещё не подключил TON-кошелёк для приёма оплаты")
 
     gross = round(food.price * quantity, 2)
     referral_discount = referral_service.apply_referral_discount(buyer, gross)
@@ -88,8 +93,29 @@ async def create_order(
     await session.commit()
 
     order = await get_order(session, order.id)
-    await notification_service.notify_cook_new_order(order, order.food, order.cook, order.buyer)
     logger.info("Order #%s created: buyer=%s food=%s qty=%s", order.id, buyer.id, food.id, quantity)
+    return order
+
+
+async def confirm_ton_payment(session: AsyncSession, order_id: int, buyer: User) -> Order:
+    order = await get_order(session, order_id)
+    if order is None:
+        raise OrderError("Заказ не найден")
+    if order.buyer_id != buyer.id:
+        raise OrderError("Нет доступа к этому заказу")
+    if order.payment_method != PaymentMethod.TON.value:
+        raise OrderError("Заказ не оплачивается TON")
+    if order.status == OrderStatus.CANCELLED.value:
+        raise OrderError("Заказ отменён")
+    if order.payment_status == PaymentStatus.PAID.value:
+        return order
+
+    order.payment_status = PaymentStatus.PAID.value
+    await session.commit()
+    order = await get_order(session, order_id)
+    await notification_service.notify_cook_new_order(order, order.food, order.cook, order.buyer)
+    await notification_service.notify_buyer_ton_paid(order, order.food, order.buyer)
+    logger.info("Order #%s marked paid via TON", order.id)
     return order
 
 
@@ -133,7 +159,8 @@ async def change_status(
         food = await session.get(Food, order.food_id)
         if food is not None:
             food.orders_count += 1
-        order.payment_status = PaymentStatus.PAID.value
+        if order.payment_status != PaymentStatus.PAID.value:
+            order.payment_status = PaymentStatus.PAID.value
         await _accrue_platform_commission(session, order)
         referral_notify = await referral_service.on_order_delivered(session, order)
 

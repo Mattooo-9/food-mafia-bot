@@ -11,9 +11,8 @@ class OrderStatus(str, Enum):
 
 
 class PaymentMethod(str, Enum):
-    CARD = "CARD"
-    CASH = "CASH"
-    TRANSFER = "TRANSFER"
+    STARS = "STARS"
+    TON = "TON"
 
 
 class PaymentStatus(str, Enum):
@@ -22,14 +21,17 @@ class PaymentStatus(str, Enum):
 
 
 PAYMENT_METHOD_LABELS: dict[str, str] = {
-    PaymentMethod.CASH.value: "Наличные",
-    PaymentMethod.TRANSFER.value: "Перевод",
-    PaymentMethod.CARD.value: "Картой при получении",
+    PaymentMethod.STARS.value: "Telegram Stars",
+    PaymentMethod.TON.value: "TON",
+    # Legacy
+    "CASH": "Наличные",
+    "TRANSFER": "Перевод",
+    "CARD": "Картой",
 }
 
 PAYMENT_STATUS_LABELS: dict[str, str] = {
     PaymentStatus.PENDING.value: "Ожидает оплаты",
-    PaymentStatus.PAID.value: "Оплачен",
+    PaymentStatus.PAID.value: "Оплачено",
 }
 
 

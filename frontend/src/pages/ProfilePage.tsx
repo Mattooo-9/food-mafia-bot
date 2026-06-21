@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, ApiError } from "../api";
 import ReferralCard from "../components/ReferralCard";
 import LocationBar from "../components/LocationBar";
+import PaymentWallet from "../components/PaymentWallet";
 import Spinner from "../components/Spinner";
 import Stars from "../components/Stars";
 import { haptic, showAlert } from "../telegram";
@@ -80,6 +81,10 @@ export default function ProfilePage() {
       <div className="card">
         <strong>{user.first_name ?? user.username ?? `id${user.tg_id}`}</strong>
       </div>
+
+      {user.is_cook && (
+        <PaymentWallet savedAddress={user.ton_wallet_address} onSaved={() => void refresh()} />
+      )}
 
       {user.is_cook ? (
         <div className="card">

@@ -33,6 +33,15 @@ def create_app() -> FastAPI:
     async def health() -> dict:
         return {"status": "ok"}
 
+    @app.get("/tonconnect-manifest.json", include_in_schema=False)
+    async def tonconnect_manifest() -> dict:
+        base = settings.public_url or "https://food-mafia-bot.onrender.com"
+        return {
+            "url": base,
+            "name": "Еда Рядом",
+            "iconUrl": f"{base}/favicon.ico",
+        }
+
     app.mount("/uploads", StaticFiles(directory=settings.upload_dir), name="uploads")
 
     if FRONTEND_DIST.exists():
