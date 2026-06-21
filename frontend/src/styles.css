@@ -299,6 +299,112 @@ body {
   box-shadow: 0 4px 16px rgba(0, 212, 255, 0.3);
 }
 
+/* Categories column */
+.cat-column {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--card);
+  border: 1px solid var(--border);
+}
+
+.cat-group {
+  margin-top: 8px;
+}
+
+.cat-group-title {
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--hint);
+}
+
+.cat-category {
+  display: flex;
+  flex-direction: column;
+}
+
+.cat-item,
+.cat-subitem {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.cat-subitem {
+  padding-left: 24px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--hint);
+}
+
+.cat-item:hover,
+.cat-subitem:hover {
+  background: var(--gradient-soft);
+}
+
+.cat-item.active,
+.cat-subitem.active {
+  background: var(--gradient-soft);
+  color: var(--accent);
+}
+
+.search-hint {
+  margin: -4px 4px 10px;
+  font-size: 13px;
+  color: var(--accent);
+}
+
+/* Distance slider */
+.distance-slider {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: var(--card);
+  border: 1px solid var(--border);
+}
+
+.distance-slider-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--hint);
+}
+
+.distance-slider-head strong {
+  color: var(--accent);
+  font-size: 15px;
+}
+
+.distance-slider input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.distance-slider-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--hint);
+}
+
 /* Forms */
 .field {
   margin-bottom: 12px;

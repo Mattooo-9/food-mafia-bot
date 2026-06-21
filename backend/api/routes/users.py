@@ -5,6 +5,7 @@ from backend.api.schemas import CategoriesOut, CookProfileIn, CurrencyOut, Locat
 from backend.config import settings
 from backend.services import referral_service, user_service
 from backend.services.user_service import WalletError
+from backend.utils.categories import tree_for_api, all_paths
 
 router = APIRouter(tags=["users"])
 
@@ -57,4 +58,13 @@ async def get_currency() -> CurrencyOut:
 
 @router.get("/categories", response_model=CategoriesOut)
 async def get_categories() -> CategoriesOut:
-    return CategoriesOut()
+    from backend.api.schemas import CategoryGroupOut, CategoryItemOut
+
+    groups = [
+        CategoryGroupOut(
+            group=g["group"],
+            categories=[CategoryItemOut(name=c["name"], subgroups=c["subgroups"]) for c in g["categories"]],
+        )
+        for g in tree_for_api()
+    ]
+    return CategoriesOut(groups=groups, flat=all_paths())

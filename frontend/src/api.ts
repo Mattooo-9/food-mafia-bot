@@ -1,5 +1,5 @@
 import { getInitData } from "./telegram";
-import type { Cook, Food, FoodFilters, MarketOverview, Order, OrderStatus, PaymentMethod, PriceSuggestion, ReferralInfo, Review, User, FoodEvaluation, Recommendation } from "./types";
+import type { Cook, Food, FoodFilters, MarketOverview, Order, OrderStatus, PaymentMethod, PriceSuggestion, ReferralInfo, Review, User, FoodEvaluation, Recommendation, CategoriesResponse, CategorizeResult } from "./types";
 
 export class ApiError extends Error {
   status: number;
@@ -68,7 +68,14 @@ export const api = {
     cook_photo?: string;
     is_online?: boolean;
   }) => request<User>("/api/me/cook-profile", { method: "POST", body: JSON.stringify(data) }),
-  getCategories: () => request<{ categories: string[] }>("/api/categories"),
+  getCategories: () => request<CategoriesResponse>("/api/categories"),
+  categorize: (opts: { name?: string; description?: string; q?: string }) => {
+    const params = new URLSearchParams();
+    if (opts.name) params.set("name", opts.name);
+    if (opts.description) params.set("description", opts.description);
+    if (opts.q) params.set("q", opts.q);
+    return request<CategorizeResult>(`/api/ai/categorize?${params}`);
+  },
 
   getFoods: (filters: FoodFilters) => {
     const params = new URLSearchParams({ feed: filters.feed });

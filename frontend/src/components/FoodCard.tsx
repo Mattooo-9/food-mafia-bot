@@ -32,7 +32,7 @@ export default function FoodCard({ food, onToggleFavorite }: Props) {
           )}
         </div>
         <div className="food-meta">
-          <span>{food.category}</span>
+          <span>{food.category.split(" › ").slice(-2).join(" › ")}</span>
           {food.distance_m != null && <span>📍 {formatDistance(food.distance_m)}</span>}
           <span>⏱ {food.cooking_time_minutes} мин</span>
         </div>

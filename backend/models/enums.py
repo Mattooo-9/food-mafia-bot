@@ -45,17 +45,7 @@ ORDER_TRANSITIONS: dict[OrderStatus, list[OrderStatus]] = {
     OrderStatus.CANCELLED: [],
 }
 
-FOOD_CATEGORIES: list[str] = sorted(
-    [
-        "Выпечка",
-        "Горячее",
-        "Десерты",
-        "Завтраки",
-        "Закуски",
-        "Напитки",
-        "Салаты",
-        "Супы",
-        "Другое",
-    ],
-    key=lambda c: (c == "Другое", c),
-)
+from backend.utils.categories import all_paths, normalize_category
+
+# Все допустимые пути категорий (для совместимости и валидации).
+FOOD_CATEGORIES: list[str] = all_paths()

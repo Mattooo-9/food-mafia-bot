@@ -3,15 +3,14 @@ import { useNavigate, useParams } from "react-router-dom";
 import { api, ApiError } from "../api";
 import Spinner from "../components/Spinner";
 import AiPriceHint from "../components/AiPriceHint";
-import { sortRu } from "../constants";
 import { haptic, showAlert } from "../telegram";
+import type { CategorizeResult } from "../types";
 
 export default function DishFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const isNew = id == null;
 
-  const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +18,8 @@ export default function DishFormPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
-  const [category, setCategory] = useState("");
+  const [categoryLabel, setCategoryLabel] = useState("");
+  const [categoryPath, setCategoryPath] = useState("");
   const [portions, setPortions] = useState("1");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [existingPhoto, setExistingPhoto] = useState<string | null>(null);
@@ -30,12 +30,18 @@ export default function DishFormPage() {
   }, []);
 
   useEffect(() => {
-    void api.getCategories().then((r) => {
-      const sorted = sortRu(r.categories);
-      setCategories(sorted);
-      if (isNew) setCategory((prev) => prev || sorted[0]);
-    });
-  }, [isNew]);
+    if (!name.trim() && !description.trim()) return;
+    const timer = window.setTimeout(() => {
+      void api
+        .categorize({ name, description })
+        .then((r: CategorizeResult) => {
+          setCategoryLabel(r.label);
+          setCategoryPath(r.path);
+        })
+        .catch(() => {});
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [name, description]);
 
   useEffect(() => {
     if (isNew) return;
@@ -45,7 +51,8 @@ export default function DishFormPage() {
         setName(food.name);
         setDescription(food.description);
         setPrice(String(food.price));
-        setCategory(food.category);
+        setCategoryLabel(food.category);
+        setCategoryPath(food.category);
         setPortions(String(food.portions));
         setExistingPhoto(food.photo);
       })
@@ -73,7 +80,6 @@ export default function DishFormPage() {
         name: name.trim(),
         description: description.trim(),
         price: priceNum,
-        category,
         portions: Math.max(0, Number(portions) || 0),
         cooking_time_minutes: 30,
         ...(photoUrl ? { photo: photoUrl } : {}),
@@ -101,7 +107,7 @@ export default function DishFormPage() {
     <div className="page">
       <h1 className="page-title">{isNew ? "Новое блюдо" : "Редактирование"}</h1>
       <p className="hint" style={{ margin: "0 4px 12px" }}>
-        ИИ сам посчитает справедливую цену — вам нужно только название и описание
+        Напишите что готовите — категорию и цену подберёт ИИ
       </p>
       <div className="card">
         <div className="field">
@@ -117,16 +123,9 @@ export default function DishFormPage() {
             placeholder="Из чего готовите, порция на сколько человек"
           />
         </div>
-        <div className="field">
-          <label>Категория</label>
-          <select value={category} onChange={(e) => setCategory(e.target.value)}>
-            {categories.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </div>
+        {categoryLabel && (
+          <p className="search-hint">Категория: {categoryLabel}</p>
+        )}
         <div className="field">
           <label>Порций в наличии</label>
           <input type="number" min={0} value={portions} onChange={(e) => setPortions(e.target.value)} />
@@ -135,7 +134,7 @@ export default function DishFormPage() {
           <label>Цена, ⭐</label>
           <input type="number" min={1} value={price} onChange={(e) => setPrice(e.target.value)} placeholder="ИИ подскажет" />
           <AiPriceHint
-            category={category}
+            category={categoryPath}
             price={price}
             description={description}
             name={name}

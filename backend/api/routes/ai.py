@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from backend.api.deps import CurrentUser, SessionDep
 from backend.api.schemas import (
+    CategorizeOut,
     FoodEvaluationOut,
     MarketInsightOut,
     MarketOverviewOut,
@@ -10,9 +11,19 @@ from backend.api.schemas import (
 )
 from backend.services import ai_analyst_service, analytics_service, food_service
 from backend.services.analytics_service import region_key
+from backend.utils.categories import categorize_text
 from backend.services.food_service import FoodError
 
 router = APIRouter(tags=["ai"])
+
+
+@router.get("/ai/categorize", response_model=CategorizeOut)
+async def ai_categorize(
+    name: str = Query(default=""),
+    description: str = Query(default=""),
+    q: str = Query(default=""),
+) -> CategorizeOut:
+    return CategorizeOut(**categorize_text(name=name, description=description, query=q))
 
 
 @router.get("/ai/market", response_model=MarketOverviewOut)

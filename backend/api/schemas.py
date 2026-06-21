@@ -84,7 +84,7 @@ class FoodIn(BaseModel):
     description: str = Field(default="", max_length=2000)
     ingredients: str = Field(default="", max_length=2000)
     price: float = Field(gt=0, le=1_000_000)
-    category: str
+    category: str = Field(default="", max_length=256)
     portions: int = Field(ge=0, le=1000)
     cooking_time_minutes: int = Field(default=30, ge=1, le=1440)
     photo: str | None = Field(default=None, max_length=512)
@@ -177,8 +177,27 @@ class ReviewOut(BaseModel):
     buyer_name: str | None = None
 
 
+class CategoryItemOut(BaseModel):
+    name: str
+    subgroups: list[str]
+
+
+class CategoryGroupOut(BaseModel):
+    group: str
+    categories: list[CategoryItemOut]
+
+
 class CategoriesOut(BaseModel):
-    categories: list[str] = FOOD_CATEGORIES
+    groups: list[CategoryGroupOut]
+    flat: list[str] = FOOD_CATEGORIES
+
+
+class CategorizeOut(BaseModel):
+    group: str
+    category: str
+    subgroup: str | None
+    path: str
+    label: str
 
 
 class UploadOut(BaseModel):

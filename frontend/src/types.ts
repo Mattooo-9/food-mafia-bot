@@ -29,6 +29,24 @@ export interface ReferralInfo {
   referrer_bonus: number;
 }
 
+export interface CategoryGroup {
+  group: string;
+  categories: { name: string; subgroups: string[] }[];
+}
+
+export interface CategoriesResponse {
+  groups: CategoryGroup[];
+  flat: string[];
+}
+
+export interface CategorizeResult {
+  group: string;
+  category: string;
+  subgroup: string | null;
+  path: string;
+  label: string;
+}
+
 export interface Food {
   id: number;
   cook_id: number;
