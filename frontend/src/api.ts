@@ -1,5 +1,5 @@
 import { getInitData } from "./telegram";
-import type { Cook, Food, FoodFilters, MarketOverview, Order, OrderStatus, PaymentMethod, PriceSuggestion, ReferralInfo, Review, User, FoodEvaluation, Recommendation, CategoriesResponse, CategorizeResult } from "./types";
+import type { Cook, Food, FoodFilters, MarketOverview, Order, OrderStatus, PaymentMethod, PriceSuggestion, ReferralInfo, Review, User, FoodEvaluation, Recommendation, CategoriesResponse, CategorizeResult, AssistantSearch } from "./types";
 
 export class ApiError extends Error {
   status: number;
@@ -69,6 +69,11 @@ export const api = {
     is_online?: boolean;
   }) => request<User>("/api/me/cook-profile", { method: "POST", body: JSON.stringify(data) }),
   getCategories: () => request<CategoriesResponse>("/api/categories"),
+  aiSearch: (q = "", scope: "feed" | "cooks" | "all" = "feed") => {
+    const params = new URLSearchParams({ scope });
+    if (q) params.set("q", q);
+    return request<AssistantSearch>(`/api/ai/search?${params}`);
+  },
   categorize: (opts: { name?: string; description?: string; q?: string }) => {
     const params = new URLSearchParams();
     if (opts.name) params.set("name", opts.name);

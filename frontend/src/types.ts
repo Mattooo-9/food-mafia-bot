@@ -29,6 +29,27 @@ export interface ReferralInfo {
   referrer_bonus: number;
 }
 
+export interface AssistantGroup {
+  title: string;
+  subtitle: string | null;
+  kind: string;
+  foods: Food[];
+  cooks: Cook[];
+}
+
+export interface AssistantSearch {
+  message: string;
+  intent: {
+    category: string;
+    feed: string;
+    max_distance_m: number | null;
+    price_max: number | null;
+  };
+  groups: AssistantGroup[];
+  total_foods: number;
+  total_cooks: number;
+}
+
 export interface CategoryGroup {
   group: string;
   categories: { name: string; subgroups: string[] }[];

@@ -1,115 +1,73 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
-import CategoryColumn from "../components/CategoryColumn";
-import DistanceSlider from "../components/DistanceSlider";
-import FoodCard from "../components/FoodCard";
+import AiResultGroups from "../components/AiResultGroups";
+import AiSearchHero from "../components/AiSearchHero";
 import LocationBar from "../components/LocationBar";
-import SearchBar from "../components/SearchBar";
 import Spinner from "../components/Spinner";
 import { haptic } from "../telegram";
-import type { CategoryGroup, CategorizeResult, Food, FoodFilters } from "../types";
-import { useUser } from "../UserContext";
-
-const DEFAULT_DISTANCE = 3000;
+import type { AssistantSearch, Food } from "../types";
 
 export default function FeedPage() {
-  const { user } = useUser();
-  const hasLocation = user?.lat != null;
-
-  const [filters, setFilters] = useState<FoodFilters>({
-    category: null,
-    feed: "nearby",
-    max_distance_m: DEFAULT_DISTANCE,
-    min_rating: null,
-    price_max: null,
-    price_min: null,
-    q: "",
-  });
-  const [categoryTree, setCategoryTree] = useState<CategoryGroup[]>([]);
-  const [foods, setFoods] = useState<Food[]>([]);
+  const [query, setQuery] = useState("");
+  const [result, setResult] = useState<AssistantSearch | null>(null);
   const [loading, setLoading] = useState(true);
-  const [searchHint, setSearchHint] = useState<CategorizeResult | null>(null);
 
-  useEffect(() => {
-    void api.getCategories().then((r) => setCategoryTree(r.groups));
-  }, []);
-
-  useEffect(() => {
-    if (!filters.q) {
-      setSearchHint(null);
-      return;
-    }
-    const timer = window.setTimeout(() => {
-      void api.categorize({ q: filters.q }).then(setSearchHint).catch(() => setSearchHint(null));
-    }, 400);
-    return () => window.clearTimeout(timer);
-  }, [filters.q]);
-
-  const setQuery = useCallback((q: string) => {
-    setFilters((prev) => ({ ...prev, q }));
-  }, []);
-
-  const load = useCallback(async () => {
+  const load = useCallback(async (q: string) => {
     setLoading(true);
     try {
-      const params: FoodFilters = {
-        ...filters,
-        feed: "nearby",
-        max_distance_m: hasLocation ? filters.max_distance_m : null,
-      };
-      const result = await api.getFoods(params);
-      setFoods(result);
+      setResult(await api.aiSearch(q, "feed"));
     } finally {
       setLoading(false);
     }
-  }, [filters, hasLocation]);
+  }, []);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    void load(query);
+  }, [query, load]);
 
   const toggleFavorite = async (food: Food) => {
     haptic();
-    if (food.is_favorite) {
-      await api.removeFavoriteFood(food.id);
-    } else {
-      await api.addFavoriteFood(food.id);
-    }
-    setFoods((prev) =>
-      prev.map((f) => (f.id === food.id ? { ...f, is_favorite: !f.is_favorite } : f)),
-    );
+    if (food.is_favorite) await api.removeFavoriteFood(food.id);
+    else await api.addFavoriteFood(food.id);
+    setResult((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        groups: prev.groups.map((g) => ({
+          ...g,
+          foods: g.foods.map((f) =>
+            f.id === food.id ? { ...f, is_favorite: !f.is_favorite } : f,
+          ),
+        })),
+      };
+    });
   };
+
+  const empty = !loading && result && result.total_foods === 0;
 
   return (
     <div className="page">
       <h1 className="page-title">Еда Рядом</h1>
 
-      <SearchBar value={filters.q} onChange={setQuery} placeholder="Что хотите поесть?" />
-      {searchHint && filters.q && (
-        <p className="search-hint">Ищем: {searchHint.label}</p>
-      )}
-
+      <AiSearchHero value={query} onChange={setQuery} />
       <LocationBar />
-      <DistanceSlider
-        value={filters.max_distance_m ?? DEFAULT_DISTANCE}
-        onChange={(max_distance_m) => setFilters((prev) => ({ ...prev, max_distance_m }))}
-      />
 
-      <CategoryColumn
-        groups={categoryTree}
-        selected={filters.category}
-        onSelect={(category) => setFilters((prev) => ({ ...prev, category }))}
-      />
+      {result && (
+        <div className="ai-message">
+          <span className="ai-message-icon">🤖</span>
+          <p>{result.message}</p>
+        </div>
+      )}
 
       {loading ? (
         <Spinner />
-      ) : foods.length === 0 ? (
+      ) : empty ? (
         <div className="empty">
-          <span className="emoji">🍽</span>
-          {filters.q ? "Ничего не найдено рядом" : "Пока нет блюд по выбранным фильтрам"}
+          <span className="emoji">🔮</span>
+          Пока пусто — попробуйте «пирог», «суп рядом» или «недорого»
         </div>
       ) : (
-        foods.map((food) => <FoodCard key={food.id} food={food} onToggleFavorite={toggleFavorite} />)
+        <AiResultGroups groups={result?.groups ?? []} onToggleFavoriteFood={toggleFavorite} />
       )}
     </div>
   );

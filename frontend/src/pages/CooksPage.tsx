@@ -1,68 +1,73 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
-import CookCard from "../components/CookCard";
-import DistanceSlider from "../components/DistanceSlider";
+import AiResultGroups from "../components/AiResultGroups";
+import AiSearchHero from "../components/AiSearchHero";
 import LocationBar from "../components/LocationBar";
-import SearchBar from "../components/SearchBar";
 import Spinner from "../components/Spinner";
 import { haptic } from "../telegram";
-import type { Cook } from "../types";
-import { useUser } from "../UserContext";
-
-const DEFAULT_DISTANCE = 3000;
+import type { AssistantSearch, Cook } from "../types";
 
 export default function CooksPage() {
-  const { user } = useUser();
-  const hasLocation = user?.lat != null;
-
-  const [cooks, setCooks] = useState<Cook[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [maxDistance, setMaxDistance] = useState(DEFAULT_DISTANCE);
   const [query, setQuery] = useState("");
+  const [result, setResult] = useState<AssistantSearch | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (q: string) => {
     setLoading(true);
     try {
-      setCooks(await api.getCooks(hasLocation ? maxDistance : null, null, query));
+      setResult(await api.aiSearch(q, "cooks"));
     } finally {
       setLoading(false);
     }
-  }, [hasLocation, maxDistance, query]);
+  }, []);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    void load(query);
+  }, [query, load]);
 
   const toggleFavorite = async (cook: Cook) => {
     haptic();
-    if (cook.is_favorite) {
-      await api.removeFavoriteCook(cook.id);
-    } else {
-      await api.addFavoriteCook(cook.id);
-    }
-    setCooks((prev) =>
-      prev.map((c) => (c.id === cook.id ? { ...c, is_favorite: !c.is_favorite } : c)),
-    );
+    if (cook.is_favorite) await api.removeFavoriteCook(cook.id);
+    else await api.addFavoriteCook(cook.id);
+    setResult((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        groups: prev.groups.map((g) => ({
+          ...g,
+          cooks: g.cooks.map((c) =>
+            c.id === cook.id ? { ...c, is_favorite: !c.is_favorite } : c,
+          ),
+        })),
+      };
+    });
   };
+
+  const empty = !loading && result && result.total_cooks === 0;
 
   return (
     <div className="page">
       <h1 className="page-title">Повара</h1>
 
-      <SearchBar value={query} onChange={setQuery} placeholder="Имя кухни, повар…" />
+      <AiSearchHero value={query} onChange={setQuery} placeholder="Например: повар с выпечкой рядом…" />
       <LocationBar />
 
-      <DistanceSlider value={maxDistance} onChange={setMaxDistance} />
+      {result && (
+        <div className="ai-message">
+          <span className="ai-message-icon">🤖</span>
+          <p>{result.message}</p>
+        </div>
+      )}
 
       {loading ? (
         <Spinner />
-      ) : cooks.length === 0 ? (
+      ) : empty ? (
         <div className="empty">
           <span className="emoji">👨‍🍳</span>
-          {query ? "Поваров не найдено" : hasLocation ? "Поваров поблизости пока нет" : "Укажите геолокацию для поиска рядом"}
+          Поваров не нашёл — укажите геолокацию или измените запрос
         </div>
       ) : (
-        cooks.map((cook) => <CookCard key={cook.id} cook={cook} onToggleFavorite={toggleFavorite} />)
+        <AiResultGroups groups={result?.groups ?? []} onToggleFavoriteCook={toggleFavorite} />
       )}
     </div>
   );

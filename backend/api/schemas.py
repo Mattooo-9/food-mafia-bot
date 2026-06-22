@@ -200,6 +200,29 @@ class CategorizeOut(BaseModel):
     label: str
 
 
+class AssistantIntentOut(BaseModel):
+    category: str
+    feed: str
+    max_distance_m: float | None
+    price_max: float | None
+
+
+class AssistantGroupOut(BaseModel):
+    title: str
+    subtitle: str | None = None
+    kind: str
+    foods: list[FoodOut] = []
+    cooks: list[CookOut] = []
+
+
+class AssistantSearchOut(BaseModel):
+    message: str
+    intent: AssistantIntentOut
+    groups: list[AssistantGroupOut]
+    total_foods: int
+    total_cooks: int
+
+
 class UploadOut(BaseModel):
     url: str
 

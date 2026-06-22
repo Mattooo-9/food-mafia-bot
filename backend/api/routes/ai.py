@@ -1,7 +1,11 @@
 from fastapi import APIRouter, HTTPException, Query
 
 from backend.api.deps import CurrentUser, SessionDep
+from backend.api.serializers import serialize_cook, serialize_food
 from backend.api.schemas import (
+    AssistantGroupOut,
+    AssistantIntentOut,
+    AssistantSearchOut,
     CategorizeOut,
     FoodEvaluationOut,
     MarketInsightOut,
@@ -9,7 +13,7 @@ from backend.api.schemas import (
     PriceSuggestionOut,
     RecommendationOut,
 )
-from backend.services import ai_analyst_service, analytics_service, food_service
+from backend.services import ai_analyst_service, analytics_service, assistant_service, food_service
 from backend.services.analytics_service import region_key
 from backend.utils.categories import categorize_text
 from backend.services.food_service import FoodError
@@ -24,6 +28,50 @@ async def ai_categorize(
     q: str = Query(default=""),
 ) -> CategorizeOut:
     return CategorizeOut(**categorize_text(name=name, description=description, query=q))
+
+
+@router.get("/ai/search", response_model=AssistantSearchOut)
+async def ai_search(
+    user: CurrentUser,
+    session: SessionDep,
+    q: str = Query(default="", max_length=256),
+    scope: str = Query(default="feed", pattern="^(feed|cooks|all)$"),
+) -> AssistantSearchOut:
+    data = await assistant_service.assistant_search(session, user, q, scope=scope)
+    fav_f = data["favorite_food_ids"]
+    fav_c = data["favorite_cook_ids"]
+    groups_out: list[AssistantGroupOut] = []
+    for g in data["groups"]:
+        foods = []
+        cooks = []
+        if g["kind"] == "foods":
+            for item in g["items"]:
+                foods.append(serialize_food(item.food, item.distance_m, fav_f))
+        else:
+            for cook, dist in g["cook_items"]:
+                cooks.append(serialize_cook(cook, dist, fav_c))
+        groups_out.append(
+            AssistantGroupOut(
+                title=g["title"],
+                subtitle=g.get("subtitle"),
+                kind=g["kind"],
+                foods=foods,
+                cooks=cooks,
+            )
+        )
+    intent = data["intent"]
+    return AssistantSearchOut(
+        message=data["message"],
+        intent=AssistantIntentOut(
+            category=intent["category"],
+            feed=intent["feed"],
+            max_distance_m=intent["max_distance_m"],
+            price_max=intent["price_max"],
+        ),
+        groups=groups_out,
+        total_foods=data["total_foods"],
+        total_cooks=data["total_cooks"],
+    )
 
 
 @router.get("/ai/market", response_model=MarketOverviewOut)
