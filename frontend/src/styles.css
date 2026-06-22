@@ -411,6 +411,58 @@ body {
   outline: none;
 }
 
+.ai-search-go {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 12px;
+  background: var(--gradient);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.account-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.account-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 0;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.account-row:last-of-type {
+  border-bottom: none;
+}
+
+.account-row-main {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.account-row-meta {
+  font-size: 12px;
+  color: var(--hint);
+}
+
+.hint-card {
+  font-size: 13px;
+  color: var(--hint);
+}
+
 .ai-search-hint {
   margin: 8px 6px 0;
   font-size: 12px;

@@ -13,7 +13,7 @@ from backend.api.schemas import (
     PriceSuggestionOut,
     RecommendationOut,
 )
-from backend.services import ai_analyst_service, analytics_service, assistant_service, food_service
+from backend.services import ai_analyst_service, analytics_service, assistant_service, food_service, search_history_service
 from backend.services.analytics_service import region_key
 from backend.utils.categories import categorize_text
 from backend.services.food_service import FoodError
@@ -60,6 +60,16 @@ async def ai_search(
             )
         )
     intent = data["intent"]
+    total = data["total_foods"] + data["total_cooks"]
+    if q.strip():
+        await search_history_service.record_search(
+            session,
+            user.id,
+            q.strip(),
+            scope=scope,
+            results_count=total,
+            summary=data["message"],
+        )
     return AssistantSearchOut(
         message=data["message"],
         intent=AssistantIntentOut(

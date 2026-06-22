@@ -223,6 +223,17 @@ class AssistantSearchOut(BaseModel):
     total_cooks: int
 
 
+class SearchHistoryOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    query: str
+    scope: str
+    results_count: int
+    summary: str
+    created_at: datetime
+
+
 class UploadOut(BaseModel):
     url: str
 

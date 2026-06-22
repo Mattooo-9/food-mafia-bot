@@ -29,6 +29,15 @@ export interface ReferralInfo {
   referrer_bonus: number;
 }
 
+export interface SearchHistoryItem {
+  id: number;
+  query: string;
+  scope: string;
+  results_count: number;
+  summary: string;
+  created_at: string;
+}
+
 export interface AssistantGroup {
   title: string;
   subtitle: string | null;

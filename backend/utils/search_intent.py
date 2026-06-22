@@ -13,6 +13,51 @@ _NEW_WORDS = ("нов", "свеж", "только что")
 _POP_WORDS = ("популяр", "хит", "топ", "заказыва")
 _QUALITY_WORDS = ("лучш", "рейтинг", "качеств", "вкусн")
 _COOK_WORDS = ("повар", "кухн", "шеф", "готовит")
+_NOISE_WORDS = (
+    "хочу",
+    "нужен",
+    "нужно",
+    "найди",
+    "найти",
+    "покажи",
+    "ищу",
+    "где",
+    "что",
+    "какой",
+    "какая",
+    "какое",
+    "мне",
+    "пожалуйста",
+    "очень",
+    "самый",
+    "самая",
+    "самое",
+)
+
+
+def extract_search_words(query: str) -> list[str]:
+    text = query.lower().strip()
+    text = re.sub(r"до\s*\d+", " ", text)
+    text = re.sub(r"\d+\s*(?:км|km|м(?:етр)?)\b", " ", text)
+    words = []
+    for w in re.split(r"[^\wа-яё-]+", text, flags=re.IGNORECASE):
+        if len(w) < 2:
+            continue
+        if any(n in w for n in _NOISE_WORDS):
+            continue
+        if any(w in d or d in w for d in _DIST_WORDS):
+            continue
+        if any(w in c or c in w for c in _CHEAP_WORDS + _FAST_WORDS + _NEW_WORDS + _POP_WORDS):
+            continue
+        if any(w in q or q in w for q in _QUALITY_WORDS + _COOK_WORDS):
+            continue
+        words.append(w)
+    return words
+
+
+def search_text_for_db(query: str) -> str:
+    words = extract_search_words(query)
+    return " ".join(words) if words else query.strip()
 
 
 def parse_search_intent(query: str, *, has_location: bool) -> dict:

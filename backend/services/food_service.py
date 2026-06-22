@@ -12,6 +12,7 @@ from backend.utils.categories import (
     is_valid_category,
     normalize_category,
 )
+from backend.utils.search_intent import extract_search_words
 from backend.utils.geo import haversine_m
 
 
@@ -26,6 +27,30 @@ class FoodWithDistance:
 
 
 FEED_TYPES = ["cheap", "fast", "nearby", "new", "popular"]
+
+
+def _word_filters(needle: str) -> list:
+    n = f"%{needle}%"
+    return [
+        func.lower(Food.name).like(n),
+        func.lower(Food.description).like(n),
+        func.lower(Food.ingredients).like(n),
+        func.lower(Food.category).like(n),
+        func.lower(User.cook_name).like(n),
+        func.lower(User.first_name).like(n),
+    ]
+
+
+def _apply_text_search(query, q: str, cat_hint: dict | None):
+    words = extract_search_words(q) or [w for w in q.strip().lower().split() if len(w) >= 2]
+    if not words:
+        words = [q.strip().lower()]
+    per_word = [or_(*_word_filters(w)) for w in words]
+    filters = [or_(*per_word)]
+    if cat_hint:
+        filters.append(func.lower(Food.category).like(f"%{cat_hint['category'].lower()}%"))
+        filters.append(func.lower(Food.category).like(f"%{cat_hint['group'].lower()}%"))
+    return query.where(or_(*filters))
 
 
 async def create_food(
@@ -158,18 +183,7 @@ async def search_foods(
         query = query.where(User.rating_avg >= min_rating)
 
     if q and q.strip():
-        needle = f"%{q.strip().lower()}%"
-        cat_filters = [
-            func.lower(Food.name).like(needle),
-            func.lower(Food.description).like(needle),
-            func.lower(Food.category).like(needle),
-            func.lower(User.cook_name).like(needle),
-            func.lower(User.first_name).like(needle),
-        ]
-        if cat_hint:
-            cat_filters.append(func.lower(Food.category).like(f"%{cat_hint['category'].lower()}%"))
-            cat_filters.append(func.lower(Food.category).like(f"%{cat_hint['group'].lower()}%"))
-        query = query.where(or_(*cat_filters))
+        query = _apply_text_search(query, q.strip(), cat_hint)
 
     result = await session.execute(query)
     foods = list(result.scalars().all())
@@ -191,21 +205,28 @@ async def search_foods(
         items.append(FoodWithDistance(food=food, distance_m=distance))
 
     far = float("inf")
-    needle = q.strip().lower() if q and q.strip() else ""
+    words = extract_search_words(q) if q and q.strip() else []
 
     def relevance(item: FoodWithDistance) -> int:
-        if not needle:
+        if not words:
+            return 0
+        blob = " ".join(
+            [
+                item.food.name,
+                item.food.description,
+                item.food.ingredients,
+                item.food.category,
+            ]
+        ).lower()
+        hits = sum(1 for w in words if w in blob)
+        if hits >= len(words):
             return 0
         fc = normalize_category(item.food.category)
-        if needle in item.food.name.lower():
-            return 0
         if cat_hint and cat_hint["path"] == fc:
             return 1
-        if cat_hint and cat_hint["category"].lower() in fc.lower():
+        if hits > 0:
             return 2
-        if needle in item.food.description.lower():
-            return 3
-        return 4
+        return 5
 
     if has_location:
         items.sort(key=lambda i: (i.distance_m if i.distance_m is not None else far, relevance(i)))
@@ -238,14 +259,20 @@ async def search_cooks(
     if min_rating is not None:
         query = query.where(User.rating_avg >= min_rating)
     if q and q.strip():
-        needle = f"%{q.strip().lower()}%"
-        query = query.where(
-            or_(
-                func.lower(User.cook_name).like(needle),
-                func.lower(User.first_name).like(needle),
-                func.lower(User.cook_description).like(needle),
+        words = extract_search_words(q) or [w for w in q.strip().lower().split() if len(w) >= 2]
+        if not words:
+            words = [q.strip().lower()]
+        per_word = []
+        for w in words:
+            n = f"%{w}%"
+            per_word.append(
+                or_(
+                    func.lower(User.cook_name).like(n),
+                    func.lower(User.first_name).like(n),
+                    func.lower(User.cook_description).like(n),
+                )
             )
-        )
+        query = query.where(or_(*per_word))
     result = await session.execute(query)
     cooks = list(result.scalars().all())
 

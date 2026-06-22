@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api";
 import AiResultGroups from "../components/AiResultGroups";
 import AiSearchHero from "../components/AiSearchHero";
@@ -8,9 +9,13 @@ import { haptic } from "../telegram";
 import type { AssistantSearch, Food } from "../types";
 
 export default function FeedPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [draft, setDraft] = useState("");
   const [query, setQuery] = useState("");
   const [result, setResult] = useState<AssistantSearch | null>(null);
   const [loading, setLoading] = useState(true);
+  const [searched, setSearched] = useState(false);
 
   const load = useCallback(async (q: string) => {
     setLoading(true);
@@ -24,6 +29,20 @@ export default function FeedPage() {
   useEffect(() => {
     void load(query);
   }, [query, load]);
+
+  const runSearch = (q: string) => {
+    setDraft(q);
+    setQuery(q);
+    setSearched(Boolean(q));
+  };
+
+  useEffect(() => {
+    const fromProfile = (location.state as { q?: string } | null)?.q;
+    if (fromProfile) {
+      runSearch(fromProfile);
+      navigate(".", { replace: true, state: null });
+    }
+  }, [location.state, navigate]);
 
   const toggleFavorite = async (food: Food) => {
     haptic();
@@ -43,13 +62,13 @@ export default function FeedPage() {
     });
   };
 
-  const empty = !loading && result && result.total_foods === 0;
+  const empty = searched && !loading && result && result.total_foods === 0;
 
   return (
     <div className="page">
       <h1 className="page-title">Еда Рядом</h1>
 
-      <AiSearchHero value={query} onChange={setQuery} />
+      <AiSearchHero draft={draft} onDraftChange={setDraft} onSearch={runSearch} />
       <LocationBar />
 
       {result && (
@@ -64,7 +83,7 @@ export default function FeedPage() {
       ) : empty ? (
         <div className="empty">
           <span className="emoji">🔮</span>
-          Пока пусто — попробуйте «пирог», «суп рядом» или «недорого»
+          Ничего не нашёл — попробуйте «пирог», «суп» или «недорого»
         </div>
       ) : (
         <AiResultGroups groups={result?.groups ?? []} onToggleFavoriteFood={toggleFavorite} />

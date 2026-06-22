@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException
 
 from backend.api.deps import CurrentUser, SessionDep
-from backend.api.schemas import CategoriesOut, CookProfileIn, CurrencyOut, LocationIn, ReferralOut, UserOut, WalletIn
+from backend.api.schemas import CategoriesOut, CookProfileIn, CurrencyOut, LocationIn, OkOut, ReferralOut, SearchHistoryOut, UserOut, WalletIn
 from backend.config import settings
-from backend.services import referral_service, user_service
+from backend.services import referral_service, search_history_service, user_service
 from backend.services.user_service import WalletError
 from backend.utils.categories import tree_for_api, all_paths
 
@@ -68,3 +68,15 @@ async def get_categories() -> CategoriesOut:
         for g in tree_for_api()
     ]
     return CategoriesOut(groups=groups, flat=all_paths())
+
+
+@router.get("/me/searches", response_model=list[SearchHistoryOut])
+async def my_searches(user: CurrentUser, session: SessionDep) -> list[SearchHistoryOut]:
+    rows = await search_history_service.list_searches(session, user.id)
+    return [SearchHistoryOut.model_validate(r) for r in rows]
+
+
+@router.delete("/me/searches", response_model=OkOut)
+async def clear_my_searches(user: CurrentUser, session: SessionDep) -> OkOut:
+    await search_history_service.clear_searches(session, user.id)
+    return OkOut()

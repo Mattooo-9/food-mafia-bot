@@ -8,9 +8,11 @@ import { haptic } from "../telegram";
 import type { AssistantSearch, Cook } from "../types";
 
 export default function CooksPage() {
+  const [draft, setDraft] = useState("");
   const [query, setQuery] = useState("");
   const [result, setResult] = useState<AssistantSearch | null>(null);
   const [loading, setLoading] = useState(true);
+  const [searched, setSearched] = useState(false);
 
   const load = useCallback(async (q: string) => {
     setLoading(true);
@@ -24,6 +26,12 @@ export default function CooksPage() {
   useEffect(() => {
     void load(query);
   }, [query, load]);
+
+  const runSearch = (q: string) => {
+    setDraft(q);
+    setQuery(q);
+    setSearched(Boolean(q));
+  };
 
   const toggleFavorite = async (cook: Cook) => {
     haptic();
@@ -43,13 +51,18 @@ export default function CooksPage() {
     });
   };
 
-  const empty = !loading && result && result.total_cooks === 0;
+  const empty = searched && !loading && result && result.total_cooks === 0;
 
   return (
     <div className="page">
       <h1 className="page-title">Повара</h1>
 
-      <AiSearchHero value={query} onChange={setQuery} placeholder="Например: повар с выпечкой рядом…" />
+      <AiSearchHero
+        draft={draft}
+        onDraftChange={setDraft}
+        onSearch={runSearch}
+        placeholder="Например: повар с выпечкой рядом…"
+      />
       <LocationBar />
 
       {result && (
@@ -64,7 +77,7 @@ export default function CooksPage() {
       ) : empty ? (
         <div className="empty">
           <span className="emoji">👨‍🍳</span>
-          Поваров не нашёл — укажите геолокацию или измените запрос
+          Поваров не нашёл — измените запрос или укажите геолокацию
         </div>
       ) : (
         <AiResultGroups groups={result?.groups ?? []} onToggleFavoriteCook={toggleFavorite} />

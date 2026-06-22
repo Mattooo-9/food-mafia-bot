@@ -57,6 +57,13 @@ export function showAlert(message: string): void {
   }
 }
 
+export function hideKeyboard(): void {
+  const el = document.activeElement;
+  if (el instanceof HTMLElement) {
+    el.blur();
+  }
+}
+
 export function openInvoice(url: string, callback?: (status: string) => void): void {
   if (tg?.openInvoice) {
     tg.openInvoice(url, callback);

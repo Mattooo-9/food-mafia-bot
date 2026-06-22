@@ -1,17 +1,22 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { api, ApiError } from "../api";
+import AccountHistory from "../components/AccountHistory";
 import ReferralCard from "../components/ReferralCard";
 import LocationBar from "../components/LocationBar";
 import PaymentWallet from "../components/PaymentWallet";
 import Spinner from "../components/Spinner";
 import Stars from "../components/Stars";
 import { haptic, showAlert } from "../telegram";
-import type { Cook } from "../types";
+import type { Cook, Order } from "../types";
 import { useUser } from "../UserContext";
 
 export default function ProfilePage() {
+  const navigate = useNavigate();
   const { user, refresh } = useUser();
   const [subscriptions, setSubscriptions] = useState<Cook[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [searches, setSearches] = useState<Awaited<ReturnType<typeof api.getSearchHistory>>>([]);
   const [editing, setEditing] = useState(false);
   const [cookName, setCookName] = useState("");
   const [cookDescription, setCookDescription] = useState("");
@@ -19,7 +24,13 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    void api.getSubscriptions().then(setSubscriptions);
+    void Promise.all([api.getSubscriptions(), api.getMyOrders(), api.getSearchHistory()]).then(
+      ([subs, ords, hist]) => {
+        setSubscriptions(subs);
+        setOrders(ords);
+        setSearches(hist);
+      },
+    );
   }, []);
 
   useEffect(() => {
@@ -75,6 +86,15 @@ export default function ProfilePage() {
       <h1 className="page-title">Профиль</h1>
 
       <LocationBar />
+
+      <AccountHistory
+        searches={searches}
+        orders={orders}
+        onClearSearches={() => {
+          void api.clearSearchHistory().then(() => setSearches([]));
+        }}
+        onPickSearch={(q) => navigate("/", { state: { q } })}
+      />
 
       <ReferralCard />
 

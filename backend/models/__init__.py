@@ -5,6 +5,7 @@ from backend.models.food import Food
 from backend.models.order import Order
 from backend.models.platform_balance import PlatformBalance
 from backend.models.review import Review
+from backend.models.search_history import SearchHistory
 from backend.models.subscription import Subscription
 from backend.models.user import User
 
@@ -23,4 +24,5 @@ __all__ = [
     "PlatformBalance",
     "MarketSnapshot",
     "FoodEvaluation",
+    "SearchHistory",
 ]
