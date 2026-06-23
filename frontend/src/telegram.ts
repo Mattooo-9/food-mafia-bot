@@ -29,8 +29,7 @@ declare global {
 export const tg: TelegramWebApp | undefined = window.Telegram?.WebApp;
 
 function applyTheme(): void {
-  if (!tg) return;
-  document.documentElement.dataset.theme = tg.colorScheme;
+  document.documentElement.dataset.theme = "dark";
 }
 
 export function initTelegram(): void {
@@ -38,7 +37,6 @@ export function initTelegram(): void {
   tg.ready();
   tg.expand();
   applyTheme();
-  tg.onEvent?.("themeChanged", applyTheme);
 }
 
 export function getInitData(): string {

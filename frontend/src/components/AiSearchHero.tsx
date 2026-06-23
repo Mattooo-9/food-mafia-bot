@@ -58,7 +58,7 @@ export default function AiSearchHero({
           </button>
         )}
       </div>
-      <p className="ai-search-hint">Напишите и нажмите «Найти» — ИИ сам разложит по группам в базе</p>
+      <p className="ai-search-hint">Напишите «суп», «салат» — покажу только подходящее, без лишнего</p>
     </form>
   );
 }

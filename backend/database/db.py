@@ -78,6 +78,17 @@ async def _migrate_sqlite(conn) -> None:
     if "ton_wallet_address" not in users_cols:
         conn.execute(text("ALTER TABLE users ADD COLUMN ton_wallet_address VARCHAR(128)"))
         logger.info("Added users.ton_wallet_address")
+    if "wellness_consent" not in users_cols:
+        conn.execute(
+            text("ALTER TABLE users ADD COLUMN wellness_consent BOOLEAN NOT NULL DEFAULT 0")
+        )
+        logger.info("Added users.wellness_consent")
+    if "wellness_consent_at" not in users_cols:
+        conn.execute(text("ALTER TABLE users ADD COLUMN wellness_consent_at DATETIME"))
+        logger.info("Added users.wellness_consent_at")
+    if "diet_preference" not in users_cols:
+        conn.execute(text("ALTER TABLE users ADD COLUMN diet_preference VARCHAR(256)"))
+        logger.info("Added users.diet_preference")
 
     foods_cols = column_names("foods")
     if "ingredients" not in foods_cols:

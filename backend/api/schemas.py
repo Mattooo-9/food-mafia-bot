@@ -51,6 +51,8 @@ class UserOut(BaseModel):
     rating_count: int
     referral_balance: float = 0.0
     ton_wallet_address: str | None = None
+    wellness_consent: bool = False
+    diet_preference: str | None = None
 
 
 class ReferralOut(BaseModel):
@@ -318,3 +320,45 @@ class RecommendationOut(BaseModel):
     overall_score: int
     buyer_tip: str
     verdict_label: str
+
+
+class OrderWishIn(BaseModel):
+    title: str = Field(min_length=2, max_length=128)
+    details: str = Field(default="", max_length=2000)
+    budget_max: float | None = Field(default=None, ge=0)
+    portions: int = Field(default=1, ge=1, le=100)
+
+
+class OrderWishOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    buyer_id: int
+    title: str
+    details: str
+    category_path: str | None
+    budget_max: float | None
+    portions: int
+    status: str
+    cook_id: int | None
+    created_at: datetime
+    claimed_at: datetime | None = None
+    buyer_name: str | None = None
+    cook_name: str | None = None
+    distance_m: float | None = None
+
+
+class WellnessIn(BaseModel):
+    consent: bool
+    diet_preference: str | None = Field(default=None, max_length=256)
+
+
+class WellnessOut(BaseModel):
+    wellness_consent: bool
+    diet_preference: str | None = None
+    message: str = ""
+    balance_hint: str = ""
+
+
+class RecipeHintsOut(BaseModel):
+    hints: list[str]

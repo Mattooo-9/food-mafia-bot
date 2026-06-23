@@ -17,6 +17,8 @@ export interface User {
   rating_count: number;
   referral_balance: number;
   ton_wallet_address: string | null;
+  wellness_consent: boolean;
+  diet_preference: string | null;
 }
 
 export interface ReferralInfo {
@@ -197,6 +199,30 @@ export interface Recommendation {
   overall_score: number;
   buyer_tip: string;
   verdict_label: string;
+}
+
+export interface OrderWish {
+  id: number;
+  buyer_id: number;
+  title: string;
+  details: string;
+  category_path: string | null;
+  budget_max: number | null;
+  portions: number;
+  status: "OPEN" | "CLAIMED" | "COMPLETED" | "CANCELLED";
+  cook_id: number | null;
+  created_at: string;
+  claimed_at: string | null;
+  buyer_name: string | null;
+  cook_name: string | null;
+  distance_m: number | null;
+}
+
+export interface WellnessInfo {
+  wellness_consent: boolean;
+  diet_preference: string | null;
+  message: string;
+  balance_hint: string;
 }
 
 export interface Order {

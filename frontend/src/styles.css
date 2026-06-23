@@ -1,21 +1,21 @@
 :root {
-  --bg-deep: #070b14;
-  --bg: var(--tg-theme-bg-color, #0a0f1a);
-  --bg-secondary: var(--tg-theme-secondary-bg-color, #111827);
-  --text: var(--tg-theme-text-color, #e8edf7);
-  --hint: var(--tg-theme-hint-color, #8b95a8);
-  --accent: var(--tg-theme-button-color, #00d4ff);
-  --accent-text: var(--tg-theme-button-text-color, #041018);
-  --accent-violet: #8b5cf6;
-  --accent-warm: #ff6b4a;
-  --card: var(--tg-theme-section-bg-color, rgba(18, 26, 42, 0.88));
-  --danger: #ff5c6a;
-  --success: #34d399;
+  --bg-deep: #030508;
+  --bg: #05080f;
+  --bg-secondary: #0a0e18;
+  --text: #e2e8f4;
+  --hint: #7a8498;
+  --accent: #00c4e8;
+  --accent-text: #030508;
+  --accent-violet: #7c4dff;
+  --accent-warm: #ff5a3d;
+  --card: rgba(12, 16, 28, 0.92);
+  --danger: #ff4d5e;
+  --success: #2dd4a0;
   --radius: 16px;
-  --glow: 0 0 24px rgba(0, 212, 255, 0.22);
-  --border: rgba(139, 149, 168, 0.18);
-  --gradient: linear-gradient(135deg, #00d4ff 0%, #8b5cf6 52%, #ff6b4a 100%);
-  --gradient-soft: linear-gradient(160deg, rgba(0, 212, 255, 0.12) 0%, rgba(139, 92, 246, 0.1) 50%, rgba(255, 107, 74, 0.08) 100%);
+  --glow: 0 0 20px rgba(0, 196, 232, 0.15);
+  --border: rgba(122, 132, 152, 0.14);
+  --gradient: linear-gradient(135deg, #00c4e8 0%, #7c4dff 50%, #ff5a3d 100%);
+  --gradient-soft: linear-gradient(160deg, rgba(0, 196, 232, 0.08) 0%, rgba(124, 77, 255, 0.06) 50%, rgba(255, 90, 61, 0.05) 100%);
 }
 
 [data-theme="light"] {
@@ -38,9 +38,8 @@ body {
   background: var(--bg-deep);
   color: var(--text);
   background-image:
-    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(0, 212, 255, 0.15), transparent),
-    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(139, 92, 246, 0.12), transparent),
-    radial-gradient(ellipse 50% 30% at 0% 100%, rgba(255, 107, 74, 0.08), transparent);
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(0, 196, 232, 0.08), transparent),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(124, 77, 255, 0.06), transparent);
   background-attachment: fixed;
 }
 
@@ -76,7 +75,7 @@ body {
   display: flex;
   gap: 2px;
   padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
-  background: rgba(10, 15, 26, 0.82);
+  background: rgba(5, 8, 15, 0.94);
   backdrop-filter: blur(20px) saturate(1.4);
   border-top: 1px solid var(--border);
 }
@@ -1125,4 +1124,70 @@ body {
   margin: 0;
   font-size: 14px;
   line-height: 1.4;
+}
+
+.wellness-card {
+  border-color: rgba(45, 212, 160, 0.2);
+  background: linear-gradient(160deg, rgba(45, 212, 160, 0.06), var(--card));
+}
+
+.wellness-tip {
+  margin: 10px 0 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--success);
+}
+
+.toggle {
+  position: relative;
+  display: inline-flex;
+  width: 44px;
+  height: 26px;
+  cursor: pointer;
+}
+
+.toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle span {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--border);
+  transition: 0.2s;
+}
+
+.toggle span::before {
+  content: "";
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  left: 3px;
+  top: 3px;
+  border-radius: 50%;
+  background: var(--text);
+  transition: 0.2s;
+}
+
+.toggle input:checked + span {
+  background: rgba(45, 212, 160, 0.35);
+}
+
+.toggle input:checked + span::before {
+  transform: translateX(18px);
+}
+
+.recipe-hints ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: var(--hint);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.wish-form {
+  margin-bottom: 14px;
 }

@@ -153,7 +153,32 @@ def categorize_text(name: str = "", description: str = "", query: str = "") -> d
         "subgroup": sub,
         "path": cat_path,
         "label": label,
+        "score": best_score,
     }
+
+
+def excluded_groups_for(cat: dict) -> list[str]:
+    """Группы, которые не предлагать при явном запросе (суп ≠ выпечка)."""
+    if cat.get("score", 0) < 1 or cat.get("group") in ("Разное", None):
+        return []
+    target = cat["group"]
+    return [g for g in CATEGORY_TREE if g not in (target, "Разное")]
+
+
+def food_group(category_path: str) -> str:
+    fc = normalize_category(category_path)
+    return fc.split(SEP)[0] if SEP in fc else fc
+
+
+def food_matches_intent(food_category: str, cat_hint: dict, exclude_groups: list[str]) -> bool:
+    group = food_group(food_category)
+    if exclude_groups and group in exclude_groups:
+        return False
+    if cat_hint.get("score", 0) >= 1 and cat_hint.get("group") not in ("Разное", None):
+        if group != cat_hint["group"]:
+            return False
+        return category_matches_filter(food_category, cat_hint["path"])
+    return True
 
 
 def category_matches_filter(food_category: str, filter_path: str | None) -> bool:

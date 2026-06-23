@@ -1,5 +1,5 @@
 import { getInitData } from "./telegram";
-import type { Cook, Food, FoodFilters, MarketOverview, Order, OrderStatus, PaymentMethod, PriceSuggestion, ReferralInfo, Review, User, FoodEvaluation, Recommendation, CategoriesResponse, CategorizeResult, AssistantSearch, SearchHistoryItem } from "./types";
+import type { Cook, Food, FoodFilters, MarketOverview, Order, OrderStatus, OrderWish, PaymentMethod, PriceSuggestion, ReferralInfo, Review, User, FoodEvaluation, Recommendation, CategoriesResponse, CategorizeResult, AssistantSearch, SearchHistoryItem, WellnessInfo } from "./types";
 
 export class ApiError extends Error {
   status: number;
@@ -126,6 +126,26 @@ export const api = {
   cancelOrder: (id: number) => request<Order>(`/api/orders/${id}/cancel`, { method: "POST" }),
   confirmTonPayment: (id: number) =>
     request<Order>(`/api/orders/${id}/confirm-ton`, { method: "POST" }),
+
+  createWish: (data: { title: string; details?: string; budget_max?: number | null; portions?: number }) =>
+    request<OrderWish>("/api/wishes", { method: "POST", body: JSON.stringify(data) }),
+  getMyWishes: () => request<OrderWish[]>("/api/wishes"),
+  getCookWishes: () => request<OrderWish[]>("/api/cook/wishes"),
+  claimWish: (id: number) => request<OrderWish>(`/api/wishes/${id}/claim`, { method: "POST" }),
+  cancelWish: (id: number) => request<OrderWish>(`/api/wishes/${id}/cancel`, { method: "POST" }),
+  completeWish: (id: number) => request<OrderWish>(`/api/wishes/${id}/complete`, { method: "POST" }),
+
+  getWellness: () => request<WellnessInfo>("/api/ai/wellness"),
+  setWellness: (consent: boolean, diet_preference?: string | null) =>
+    request<WellnessInfo>("/api/me/wellness", {
+      method: "POST",
+      body: JSON.stringify({ consent, diet_preference: diet_preference ?? null }),
+    }),
+  getRecipeHints: (q = "") => {
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    return request<{ hints: string[] }>(`/api/cook/recipe-hints?${params}`);
+  },
 
   createReview: (order_id: number, rating: number, text: string) =>
     request<Review>("/api/reviews", { method: "POST", body: JSON.stringify({ order_id, rating, text }) }),

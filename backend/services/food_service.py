@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -9,6 +9,7 @@ from backend.services.pricing_engine import auto_ingredients_text, infer_cooking
 from backend.utils.categories import (
     categorize_text,
     category_matches_filter,
+    food_matches_intent,
     is_valid_category,
     normalize_category,
 )
@@ -41,16 +42,18 @@ def _word_filters(needle: str) -> list:
     ]
 
 
-def _apply_text_search(query, q: str, cat_hint: dict | None):
+def _apply_text_search(query, q: str, cat_hint: dict | None, *, strict: bool = False):
     words = extract_search_words(q) or [w for w in q.strip().lower().split() if len(w) >= 2]
     if not words:
         words = [q.strip().lower()]
     per_word = [or_(*_word_filters(w)) for w in words]
-    filters = [or_(*per_word)]
-    if cat_hint:
-        filters.append(func.lower(Food.category).like(f"%{cat_hint['category'].lower()}%"))
-        filters.append(func.lower(Food.category).like(f"%{cat_hint['group'].lower()}%"))
-    return query.where(or_(*filters))
+    if strict and cat_hint and cat_hint.get("score", 0) >= 1:
+        cat_match = or_(
+            func.lower(Food.category).like(f"%{cat_hint['category'].lower()}%"),
+            func.lower(Food.category).like(f"%{cat_hint['group'].lower()}%"),
+        )
+        return query.where(or_(cat_match, and_(*per_word)))
+    return query.where(or_(*per_word))
 
 
 async def create_food(
@@ -161,8 +164,11 @@ async def search_foods(
     min_rating: float | None = None,
     limit: int = 50,
     offset: int = 0,
+    exclude_groups: list[str] | None = None,
+    strict_category: bool = False,
 ) -> list[FoodWithDistance]:
     cat_hint = categorize_text(query=q.strip()) if q and q.strip() else None
+    exclude = exclude_groups or []
 
     query = (
         select(Food)
@@ -183,7 +189,9 @@ async def search_foods(
         query = query.where(User.rating_avg >= min_rating)
 
     if q and q.strip():
-        query = _apply_text_search(query, q.strip(), cat_hint)
+        query = _apply_text_search(
+            query, q.strip(), cat_hint, strict=strict_category or bool(exclude),
+        )
 
     result = await session.execute(query)
     foods = list(result.scalars().all())
@@ -191,6 +199,10 @@ async def search_foods(
     if category:
         norm = normalize_category(category)
         foods = [f for f in foods if category_matches_filter(f.category, norm)]
+
+    if exclude or (cat_hint and strict_category):
+        hint = cat_hint or {"group": "Разное", "path": "", "score": 0}
+        foods = [f for f in foods if food_matches_intent(f.category, hint, exclude)]
 
     items: list[FoodWithDistance] = []
     has_location = viewer.lat is not None and viewer.lon is not None

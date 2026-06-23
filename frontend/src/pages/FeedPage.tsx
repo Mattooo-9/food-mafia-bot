@@ -83,7 +83,7 @@ export default function FeedPage() {
       ) : empty ? (
         <div className="empty">
           <span className="emoji">🔮</span>
-          Ничего не нашёл — попробуйте «пирог», «суп» или «недорого»
+          Ничего не нашёл — попробуйте «борщ», «суп» или «салат»
         </div>
       ) : (
         <AiResultGroups groups={result?.groups ?? []} onToggleFavoriteFood={toggleFavorite} />

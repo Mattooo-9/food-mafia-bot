@@ -43,7 +43,9 @@ def _build_message(intent: dict, food_count: int, cook_count: int) -> str:
 
     total = food_count + cook_count
     if total == 0:
-        return f"По запросу «{q}» пока пусто — попробуйте проще: «борщ», «выпечка рядом», «недорого»."
+        if cat.get("group") != "Разное" and cat.get("score", 0) >= 1:
+            return f"По «{q}» пока нет подходящих блюд рядом — только {cat['label'].lower()}."
+        return f"По запросу «{q}» пока пусто — попробуйте проще: «борщ», «салат», «недорого»."
 
     tail = []
     if food_count:
@@ -173,9 +175,25 @@ async def assistant_search(
             max_distance_m=intent["max_distance_m"],
             price_max=intent["price_max"],
             min_rating=intent["min_rating"],
+            exclude_groups=intent.get("exclude_groups"),
+            strict_category=intent.get("strict_category", False),
             limit=80,
         )
-        if q and not food_items:
+        if q and not food_items and intent.get("strict_category"):
+            food_items = await food_service.search_foods(
+                session,
+                viewer,
+                feed=intent["feed"],
+                category=intent["category"],
+                q=None,
+                max_distance_m=intent["max_distance_m"],
+                price_max=intent["price_max"],
+                min_rating=intent["min_rating"],
+                exclude_groups=intent.get("exclude_groups"),
+                strict_category=True,
+                limit=80,
+            )
+        if q and not food_items and not intent.get("strict_category"):
             food_items = await food_service.search_foods(
                 session,
                 viewer,
@@ -187,9 +205,20 @@ async def assistant_search(
                 limit=80,
             )
         if not q:
-            recs = await ai_analyst_service.get_recommendations(session, viewer, limit=12)
+            from backend.services import nutrition_service
+
+            recs = await nutrition_service.harmonious_recommendations(session, viewer, limit=12)
+            if not recs:
+                recs_raw = await ai_analyst_service.get_recommendations(session, viewer, limit=12)
+                recs = recs_raw
+            else:
+                recs_raw = recs
             seen = {i.food.id for i in food_items}
-            for food, _ev, dist in recs:
+            for item in recs_raw:
+                if isinstance(item, tuple) and len(item) == 3:
+                    food, _ev, dist = item
+                else:
+                    continue
                 if food.id not in seen:
                     food_items.insert(0, FoodWithDistance(food=food, distance_m=dist))
                     seen.add(food.id)
@@ -231,8 +260,20 @@ async def assistant_search(
     fav_foods = await favorite_service.get_favorite_food_ids(session, viewer)
     fav_cooks = await favorite_service.get_favorite_cook_ids(session, viewer)
 
+    wellness_note = ""
+    if viewer.wellness_consent:
+        from backend.services import nutrition_service
+
+        tip = await nutrition_service.wellness_tip(session, viewer)
+        if tip.get("message"):
+            wellness_note = tip["message"]
+
+    msg = _build_message(intent, len(food_items), len(cook_items))
+    if wellness_note and not query.strip():
+        msg = f"{wellness_note} {msg}"
+
     return {
-        "message": _build_message(intent, len(food_items), len(cook_items)),
+        "message": msg,
         "intent": {
             "category": intent["category_hint"]["label"],
             "feed": intent["feed"],

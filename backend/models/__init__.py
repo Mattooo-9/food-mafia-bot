@@ -3,6 +3,7 @@ from backend.models.enums import FOOD_CATEGORIES, OrderStatus, PaymentMethod, Pa
 from backend.models.favorite import FavoriteCook, FavoriteFood
 from backend.models.food import Food
 from backend.models.order import Order
+from backend.models.order_wish import OrderWish, OrderWishStatus
 from backend.models.platform_balance import PlatformBalance
 from backend.models.review import Review
 from backend.models.search_history import SearchHistory
@@ -25,4 +26,6 @@ __all__ = [
     "MarketSnapshot",
     "FoodEvaluation",
     "SearchHistory",
+    "OrderWish",
+    "OrderWishStatus",
 ]

@@ -34,6 +34,10 @@ class User(Base):
     referral_welcome_claimed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     ton_wallet_address: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
+    wellness_consent: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    wellness_consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    diet_preference: Mapped[str | None] = mapped_column(String(256), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

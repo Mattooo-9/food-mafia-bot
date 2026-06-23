@@ -93,3 +93,20 @@ async def update_wallet(
         user.ton_wallet_address = address
     await session.commit()
     return user
+
+
+async def update_wellness(
+    session: AsyncSession,
+    user: User,
+    *,
+    consent: bool,
+    diet_preference: str | None = None,
+) -> User:
+    from datetime import datetime, timezone
+
+    user.wellness_consent = consent
+    user.wellness_consent_at = datetime.now(timezone.utc) if consent else None
+    if diet_preference is not None:
+        user.diet_preference = diet_preference.strip()[:256] or None
+    await session.commit()
+    return user

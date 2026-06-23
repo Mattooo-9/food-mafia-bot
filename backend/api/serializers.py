@@ -58,3 +58,14 @@ def serialize_review(review: Review) -> ReviewOut:
     out = ReviewOut.model_validate(review)
     out.buyer_name = review.buyer.first_name or review.buyer.username
     return out
+
+
+def serialize_order_wish(wish, *, distance_m: float | None = None):
+    from backend.api.schemas import OrderWishOut
+
+    out = OrderWishOut.model_validate(wish)
+    out.buyer_name = wish.buyer.first_name or wish.buyer.username
+    if wish.cook:
+        out.cook_name = wish.cook.cook_name or wish.cook.first_name
+    out.distance_m = round(distance_m, 1) if distance_m is not None else None
+    return out

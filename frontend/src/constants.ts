@@ -82,11 +82,12 @@ export const COOK_ORDER_ACTIONS: Partial<
   READY: [{ label: "Выдан", status: "DELIVERED" as OrderStatus }],
 };
 
-/** Вкладки кухни — по алфавиту (ru). */
+/** Вкладки кухни */
 export const KITCHEN_TABS = [
-  { id: "foods" as const, label: "Блюда" },
   { id: "orders" as const, label: "Заказы" },
-].sort((a, b) => a.label.localeCompare(b.label, "ru"));
+  { id: "wishes" as const, label: "Запросы" },
+  { id: "foods" as const, label: "Блюда" },
+];
 
 /** Вкладки навигации — по алфавиту (ru). */
 export const TABS = [

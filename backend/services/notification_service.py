@@ -172,3 +172,38 @@ async def notify_subscribers_new_food(session: AsyncSession, food: Food, cook: U
     )
     for tg_id in tg_ids:
         await _send(tg_id, text)
+
+
+async def notify_cooks_new_wish(session: AsyncSession, wish) -> None:
+    result = await session.execute(
+        select(User).where(User.is_cook.is_(True), User.is_online.is_(True))
+    )
+    cooks = list(result.scalars().all())
+    buyer = wish.buyer
+    buyer_name = buyer.first_name or buyer.username or "Покупатель"
+    budget = f"до {_stars(wish.budget_max)}" if wish.budget_max else "по договорённости"
+    text = (
+        f"📋 <b>Новый запрос от покупателя!</b>\n\n"
+        f"«{wish.title}» × {wish.portions}\n"
+        f"💰 {budget}\n"
+        f"👤 {buyer_name}"
+    )
+    if wish.details:
+        text += f"\n💬 {wish.details[:200]}"
+    text += "\n\nОткройте «Моя кухня» → «Запросы» чтобы взять заказ."
+    for cook in cooks:
+        if cook.id == wish.buyer_id:
+            continue
+        await _send(cook.tg_id, text)
+
+
+async def notify_buyer_wish_claimed(wish) -> None:
+    cook = wish.cook
+    if cook is None or wish.buyer is None:
+        return
+    cook_name = cook.cook_name or cook.first_name or "Повар"
+    await _send(
+        wish.buyer.tg_id,
+        f"✅ <b>{cook_name}</b> взял ваш запрос «{wish.title}».\n"
+        "Свяжитесь в чате Telegram или уточните детали в приложении.",
+    )

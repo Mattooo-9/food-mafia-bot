@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from backend.utils.categories import categorize_text
+from backend.utils.categories import categorize_text, excluded_groups_for
 
 _DIST_WORDS = ("рядом", "близко", "поблизости", "недалеко", "вокруг", "по соседству")
 _CHEAP_WORDS = ("дешев", "недорог", "бюджет", "выгодн", "эконом")
@@ -115,11 +115,16 @@ def parse_search_intent(query: str, *, has_location: bool) -> dict:
     elif has_location:
         sort_labels.append("ближайшие")
 
+    exclude_groups = excluded_groups_for(cat)
+    strict_category = cat.get("score", 0) >= 1 and cat.get("group") not in ("Разное", None)
+
     return {
         "query": raw,
         "feed": feed,
         "category": category,
         "category_hint": cat,
+        "exclude_groups": exclude_groups,
+        "strict_category": strict_category,
         "max_distance_m": max_distance_m,
         "price_max": price_max,
         "min_rating": min_rating,

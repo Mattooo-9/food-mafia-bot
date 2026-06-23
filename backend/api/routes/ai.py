@@ -61,7 +61,7 @@ async def ai_search(
         )
     intent = data["intent"]
     total = data["total_foods"] + data["total_cooks"]
-    if q.strip():
+    if q.strip() and user.wellness_consent:
         await search_history_service.record_search(
             session,
             user.id,

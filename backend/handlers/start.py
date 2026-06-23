@@ -73,6 +73,10 @@ async def cmd_start(message: Message, command: CommandObject) -> None:
         return
     await message.answer(text, reply_markup=markup)
     await message.answer("Быстрые действия:", reply_markup=main_reply_keyboard())
+    if is_new:
+        from backend.handlers.guide import schedule_new_user_guide
+
+        await schedule_new_user_guide(message, tg.first_name)
 
 
 @router.message(Command("app"))

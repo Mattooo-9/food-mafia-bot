@@ -1,25 +1,34 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, ApiError, formatPrice } from "../api";
+import { api, ApiError, formatPrice, formatDistance } from "../api";
 import Spinner from "../components/Spinner";
 import StatusBadge from "../components/StatusBadge";
 import { COOK_ORDER_ACTIONS, KITCHEN_TABS, ORDER_STATUS_RANK, PAYMENT_METHOD_LABELS, PAYMENT_STATUS_LABELS } from "../constants";
 import { haptic, showAlert } from "../telegram";
-import type { Food, Order, OrderStatus } from "../types";
+import type { Food, Order, OrderStatus, OrderWish } from "../types";
 
 export default function MyKitchenPage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<(typeof KITCHEN_TABS)[number]["id"]>("orders");
   const [foods, setFoods] = useState<Food[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [wishes, setWishes] = useState<OrderWish[]>([]);
+  const [recipeHints, setRecipeHints] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [foodsData, ordersData] = await Promise.all([api.getMyFoods(), api.getCookOrders()]);
+      const [foodsData, ordersData, wishesData, hintsData] = await Promise.all([
+        api.getMyFoods(),
+        api.getCookOrders(),
+        api.getCookWishes(),
+        api.getRecipeHints(),
+      ]);
       setFoods(foodsData);
       setOrders(ordersData);
+      setWishes(wishesData);
+      setRecipeHints(hintsData.hints);
     } finally {
       setLoading(false);
     }
@@ -45,6 +54,8 @@ export default function MyKitchenPage() {
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
     [orders],
   );
+
+  const openWishes = useMemo(() => wishes.filter((w) => w.status === "OPEN"), [wishes]);
 
   const changeStatus = async (order: Order, status: OrderStatus) => {
     try {
@@ -76,6 +87,17 @@ export default function MyKitchenPage() {
     await api.updateFood(food.id, { portions: next });
   };
 
+  const claimWish = async (wish: OrderWish) => {
+    try {
+      await api.claimWish(wish.id);
+      haptic("success");
+      await load();
+    } catch (e) {
+      haptic("error");
+      showAlert(e instanceof ApiError ? e.message : "Не удалось взять заказ");
+    }
+  };
+
   if (loading) return <Spinner />;
 
   return (
@@ -89,7 +111,11 @@ export default function MyKitchenPage() {
             onClick={() => setTab(t.id)}
           >
             {t.label}
-            {t.id === "orders" ? ` (${sortedActiveOrders.length})` : ` (${foods.length})`}
+            {t.id === "orders"
+              ? ` (${sortedActiveOrders.length})`
+              : t.id === "wishes"
+                ? ` (${openWishes.length})`
+                : ` (${foods.length})`}
           </button>
         ))}
       </div>
@@ -159,6 +185,16 @@ export default function MyKitchenPage() {
 
       {tab === "foods" && (
         <>
+          {recipeHints.length > 0 && (
+            <div className="card recipe-hints">
+              <strong>💡 Идеи по теме</strong>
+              <ul>
+                {recipeHints.map((h) => (
+                  <li key={h}>{h}</li>
+                ))}
+              </ul>
+            </div>
+          )}
           <button className="btn" onClick={() => navigate("/my-kitchen/dish/new")}>
             Добавить блюдо
           </button>
@@ -201,6 +237,35 @@ export default function MyKitchenPage() {
                   Удалить
                 </button>
               </div>
+            </div>
+          ))}
+        </>
+      )}
+
+      {tab === "wishes" && (
+        <>
+          {openWishes.length === 0 && (
+            <div className="empty">
+              <span className="emoji">📋</span>
+              Пока нет открытых запросов от покупателей
+            </div>
+          )}
+          {openWishes.map((wish) => (
+            <div className="card" key={wish.id}>
+              <div className="row between">
+                <strong>{wish.title}</strong>
+                <span className="badge online">открыт</span>
+              </div>
+              <div className="food-meta" style={{ marginTop: 6 }}>
+                <span>× {wish.portions}</span>
+                <span>{wish.buyer_name ?? "Покупатель"}</span>
+                {wish.budget_max != null && <span>до {formatPrice(wish.budget_max)}</span>}
+                {wish.distance_m != null && <span>{formatDistance(wish.distance_m)}</span>}
+              </div>
+              {wish.details && <p className="hint">💬 {wish.details}</p>}
+              <button className="btn small" onClick={() => void claimWish(wish)}>
+                Взять заказ
+              </button>
             </div>
           ))}
         </>

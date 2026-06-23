@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, ApiError, formatPrice } from "../api";
+import OrderWishForm from "../components/OrderWishForm";
 import Spinner from "../components/Spinner";
 import StatusBadge from "../components/StatusBadge";
 import { ORDER_STATUS_RANK, PAYMENT_METHOD_LABELS, PAYMENT_STATUS_LABELS } from "../constants";
 import { haptic, showAlert } from "../telegram";
-import type { Order } from "../types";
+import type { Order, OrderWish } from "../types";
 
 function ReviewForm({ order, onDone }: { order: Order; onDone: () => void }) {
   const [rating, setRating] = useState(5);
@@ -56,13 +57,16 @@ function ReviewForm({ order, onDone }: { order: Order; onDone: () => void }) {
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [wishes, setWishes] = useState<OrderWish[]>([]);
   const [loading, setLoading] = useState(true);
   const [reviewFor, setReviewFor] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setOrders(await api.getMyOrders());
+      const [ords, wishList] = await Promise.all([api.getMyOrders(), api.getMyWishes()]);
+      setOrders(ords);
+      setWishes(wishList);
     } finally {
       setLoading(false);
     }
@@ -98,6 +102,34 @@ export default function OrdersPage() {
   return (
     <div className="page">
       <h1 className="page-title">Заказы</h1>
+
+      <OrderWishForm onCreated={() => void load()} />
+
+      {wishes.filter((w) => w.status !== "CANCELLED").length > 0 && (
+        <>
+          <h2 className="section-title">Мои запросы</h2>
+          {wishes
+            .filter((w) => w.status !== "CANCELLED")
+            .map((wish) => (
+              <div className="card" key={wish.id}>
+                <div className="row between">
+                  <strong>{wish.title}</strong>
+                  <span className="hint">{wish.status === "OPEN" ? "ищем повара" : wish.cook_name}</span>
+                </div>
+                {wish.details && <p className="hint">💬 {wish.details}</p>}
+                {wish.status === "OPEN" && (
+                  <button
+                    className="btn small danger"
+                    onClick={() => void api.cancelWish(wish.id).then(load)}
+                  >
+                    Отменить
+                  </button>
+                )}
+              </div>
+            ))}
+        </>
+      )}
+
       {orders.length === 0 ? (
         <div className="empty">
           <span className="emoji">🛒</span>Вы ещё ничего не заказывали

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api, ApiError } from "../api";
 import AccountHistory from "../components/AccountHistory";
 import ReferralCard from "../components/ReferralCard";
+import WellnessCard from "../components/WellnessCard";
 import LocationBar from "../components/LocationBar";
 import PaymentWallet from "../components/PaymentWallet";
 import Spinner from "../components/Spinner";
@@ -86,6 +87,8 @@ export default function ProfilePage() {
       <h1 className="page-title">Профиль</h1>
 
       <LocationBar />
+
+      <WellnessCard />
 
       <AccountHistory
         searches={searches}
