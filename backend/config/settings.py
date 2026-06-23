@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     use_webhook: bool = False
     # Render.com подставляет сам; Railway — задайте WEBAPP_URL или PUBLIC_URL.
     render_external_url: str = Field(default="", validation_alias="RENDER_EXTERNAL_URL")
+    koyeb_public_url: str = Field(default="", validation_alias="KOYEB_PUBLIC_URL")
+    vercel_url: str = Field(default="", validation_alias="VERCEL_URL")
     public_url_override: str = Field(default="", validation_alias="PUBLIC_URL")
     keep_alive_interval_minutes: int = 10
 
@@ -60,12 +62,27 @@ class Settings(BaseSettings):
         for candidate in (
             self.webapp_url,
             self.public_url_override,
+            self.koyeb_public_url,
             self.render_external_url,
+            self.vercel_url,
             _hf_space_url(),
         ):
             if candidate:
                 return candidate.rstrip("/")
         return ""
+
+    # Active-Passive cluster (Koyeb primary + Vercel standby)
+    cluster_role: str = Field(default="primary", validation_alias="CLUSTER_ROLE")
+    cluster_peer_url: str = Field(default="", validation_alias="CLUSTER_PEER_URL")
+    redis_url: str = Field(default="", validation_alias="REDIS_URL")
+    instance_id: str = Field(default="", validation_alias="INSTANCE_ID")
+    lock_key: str = "food-mafia:bot-leader"
+    lock_ttl_seconds: int = 45
+    cron_secret: str = Field(default="", validation_alias="CRON_SECRET")
+    watchdog_enabled: bool = True
+    watchdog_max_memory_mb: int = 480
+    watchdog_max_critical_errors: int = 8
+    watchdog_interval_seconds: int = 30
 
     upload_dir: Path = BASE_DIR / "uploads"
     max_upload_size: int = 5 * 1024 * 1024  # 5 MB

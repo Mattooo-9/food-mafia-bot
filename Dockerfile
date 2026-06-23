@@ -16,10 +16,15 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY backend/ ./backend/
 COPY database/ ./database/
-COPY main.py alembic.ini ./
+COPY main.py alembic.ini vercel_app.py ./
+COPY scripts/ ./scripts/
 COPY --from=frontend /frontend/dist ./frontend/dist
 
 RUN mkdir -p uploads database /data
 
+ENV CLUSTER_ROLE=primary
+ENV USE_WEBHOOK=1
+ENV WATCHDOG_ENABLED=1
+
 EXPOSE 8000
-CMD ["python", "main.py"]
+CMD ["python", "scripts/watchdog_supervisor.py"]

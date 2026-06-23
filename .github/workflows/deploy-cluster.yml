@@ -1,0 +1,54 @@
+name: deploy-cluster
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "backend/cluster/**"
+      - "koyeb.yaml"
+      - "vercel.json"
+      - "vercel_app.py"
+      - "scripts/deploy_cluster.py"
+      - "Dockerfile"
+      - "requirements.txt"
+
+concurrency:
+  group: deploy-cluster
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Koyeb + Vercel cluster
+    runs-on: ubuntu-latest
+    if: ${{ vars.ENABLE_CLUSTER_DEPLOY == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install CLIs
+        run: |
+          npm i -g vercel@latest
+          curl -fsSL https://cli.koyeb.com/install.sh | bash
+          echo "$HOME/.koyeb/bin" >> $GITHUB_PATH
+
+      - name: Deploy cluster
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          ADMIN_ID: ${{ secrets.ADMIN_ID }}
+          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          KOYEB_TOKEN: ${{ secrets.KOYEB_TOKEN }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          KOYEB_PUBLIC_URL: ${{ vars.KOYEB_PUBLIC_URL }}
+          CLUSTER_STANDBY_URL: ${{ vars.CLUSTER_STANDBY_URL }}
+        run: python scripts/deploy_cluster.py

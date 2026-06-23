@@ -1,0 +1,52 @@
+# Koyeb — primary node (Active-Passive cluster)
+# Деплой: koyeb service create food-mafia-bot --app food-mafia-bot -f koyeb.yaml
+# или: python scripts/deploy_cluster.py
+
+name: food-mafia-bot
+type: web
+
+instance:
+  type: nano
+  regions:
+    - was
+
+ports:
+  - port: 8000
+    protocol: http
+
+routes:
+  - path: /
+    port: 8000
+
+docker:
+  dockerfile: Dockerfile
+
+health_checks:
+  - port: 8000
+    path: /health
+    initial_delay_seconds: 20
+    period_seconds: 30
+
+env:
+  - name: CLUSTER_ROLE
+    value: primary
+  - name: USE_WEBHOOK
+    value: "1"
+  - name: INSTANCE_ID
+    value: koyeb-primary
+  - name: LOG_LEVEL
+    value: INFO
+  - name: KEEP_ALIVE_INTERVAL_MINUTES
+    value: "0"
+  - name: WATCHDOG_ENABLED
+    value: "1"
+  - name: PYTHONUNBUFFERED
+    value: "1"
+
+# Секреты задайте в панели Koyeb или через CLI:
+# BOT_TOKEN, ADMIN_ID, WEBHOOK_SECRET, DATABASE_URL, REDIS_URL,
+# CLUSTER_PEER_URL (URL Vercel standby), CRON_SECRET, KOYEB_PUBLIC_URL
+
+scaling:
+  min: 1
+  max: 1

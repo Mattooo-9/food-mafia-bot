@@ -1,8 +1,9 @@
 from fastapi import APIRouter
 
-from backend.api.routes import ai, cooks, favorites, foods, orders, reviews, subscriptions, uploads, users
+from backend.api.routes import ai, cluster, cooks, favorites, foods, orders, reviews, subscriptions, uploads, users
 
 api_router = APIRouter(prefix="/api")
+api_router.include_router(cluster.router)
 api_router.include_router(ai.router)
 api_router.include_router(cooks.router)
 api_router.include_router(favorites.router)

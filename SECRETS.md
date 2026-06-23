@@ -25,6 +25,16 @@
 | `BACKEND_URLS` | `https://food-mafia-bot.onrender.com,https://user-food-mafia-bot.hf.space` | Health-check по приоритету |
 | `HF_SPACE` | `Mattooo-9/food-mafia-bot` | Имя Space на HF |
 | `RENDER_URL` | `https://food-mafia-bot.onrender.com` | Keep-alive |
+| `KOYEB_PUBLIC_URL` | URL primary на Koyeb | Cluster |
+| `CLUSTER_STANDBY_URL` | URL standby на Vercel | Cluster |
+| `ENABLE_CLUSTER_DEPLOY` | `true` чтобы включить workflow deploy-cluster | CI |
+
+| Secret | Где взять |
+| `DATABASE_URL` | Neon / Supabase Postgres (общая для Koyeb+Vercel) |
+| `REDIS_URL` | Upstash Redis (блокировка лидера) |
+| `CRON_SECRET` | Случайная строка для Vercel cron failover |
+| `KOYEB_TOKEN` | Koyeb → Account → API tokens |
+| `VERCEL_TOKEN` | Vercel → Account → Tokens |
 
 ## Как это работает (каждый push в `main`)
 

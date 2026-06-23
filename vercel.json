@@ -1,0 +1,33 @@
+{
+  "version": 2,
+  "name": "food-mafia-bot",
+  "buildCommand": "pip install -r requirements.txt && cd frontend && npm ci && npm run build",
+  "installCommand": "pip install -r requirements.txt",
+  "framework": null,
+  "builds": [
+    {
+      "src": "vercel_app.py",
+      "use": "@vercel/python",
+      "config": {
+        "maxLambdaSize": "50mb"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "vercel_app.py"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/cluster/failover",
+      "schedule": "* * * * *"
+    }
+  ],
+  "env": {
+    "CLUSTER_ROLE": "standby",
+    "USE_WEBHOOK": "1",
+    "PYTHONUNBUFFERED": "1"
+  }
+}

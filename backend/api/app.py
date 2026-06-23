@@ -26,12 +26,25 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+        from backend.cluster.watchdog import record_critical_error
+
+        record_critical_error()
         logger.exception("Unhandled error on %s %s", request.method, request.url.path)
         return JSONResponse(status_code=500, content={"detail": "Внутренняя ошибка сервера"})
 
     @app.get("/health")
     async def health() -> dict:
-        return {"status": "ok"}
+        from backend.cluster.leader import get_cluster
+
+        cluster = get_cluster()
+        return {
+            "status": "ok",
+            "cluster": {
+                "role": settings.cluster_role,
+                "leader": cluster.is_leader,
+                "instance": cluster.instance_id,
+            },
+        }
 
     @app.get("/tonconnect-manifest.json", include_in_schema=False)
     async def tonconnect_manifest() -> dict:
