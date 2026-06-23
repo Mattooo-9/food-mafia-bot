@@ -92,6 +92,22 @@ def main() -> None:
     for key, value in pairs.items():
         api("PUT", f"/services/{service_id}/env-vars/{key}", {"value": value})
 
+    cluster_env = {
+        "CLUSTER_ROLE": "primary",
+        "INSTANCE_ID": "render-primary",
+    }
+    redis = os.environ.get("REDIS_URL")
+    peer = os.environ.get("CLUSTER_STANDBY_URL")
+    if redis:
+        cluster_env["REDIS_URL"] = redis
+    if peer:
+        cluster_env["CLUSTER_PEER_URL"] = peer
+    cron = os.environ.get("CRON_SECRET")
+    if cron:
+        cluster_env["CRON_SECRET"] = cron
+    for key, value in cluster_env.items():
+        api("PUT", f"/services/{service_id}/env-vars/{key}", {"value": value})
+
     # Remove stale Postgres URL from old blueprint — use SQLite in container.
     try:
         api("DELETE", f"/services/{service_id}/env-vars/DATABASE_URL")
