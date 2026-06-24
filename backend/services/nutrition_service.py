@@ -59,12 +59,12 @@ def _hour_bucket() -> str:
 def _base_tip_for_hour() -> tuple[str, str]:
     bucket = _hour_bucket()
     if bucket == "morning":
-        return "Сейчас уместно что-то лёгкое и тёплое.", "На каждый день"
+        return "Утро — лёгкий завтрак рядом.", "На каждый день"
     if bucket == "lunch":
-        return "На обед хорошо сытное горячее и свежий салат.", "Горячие блюда"
+        return "Обед — сытное горячее рядом.", "Горячие блюда"
     if bucket == "evening":
-        return "Вечером — умеренная порция, тёплое и несложное.", "Горячие блюда"
-    return "Поздно — лучше лёгкое: суп, салат или чай.", "Закуски и салаты"
+        return "Вечер — тёплое, без тяжести.", "Горячие блюда"
+    return "Поздно — суп или салат.", "Закуски и салаты"
 
 
 async def _recent_search_groups(session: AsyncSession, user_id: int) -> list[str]:
@@ -122,7 +122,7 @@ async def wellness_tip(session: AsyncSession, user: User) -> dict:
                 prefer = "Горячие блюда"
 
     if user.diet_preference:
-        msg = f"{msg} Учитываю: {user.diet_preference}."
+        msg = f"{msg} ({user.diet_preference})."
 
     return {
         "personalized": personalized,

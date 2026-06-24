@@ -469,6 +469,38 @@ body {
   line-height: 1.4;
 }
 
+.ai-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 0 4px;
+}
+
+.ai-chip {
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ai-message-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.ai-message-companion {
+  margin: 6px 0 0 !important;
+}
+
+.ai-action-btn {
+  margin-top: 10px;
+}
+
 .ai-message {
   display: flex;
   gap: 10px;

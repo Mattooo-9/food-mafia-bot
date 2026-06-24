@@ -217,9 +217,17 @@ class AssistantGroupOut(BaseModel):
     cooks: list[CookOut] = []
 
 
+class AssistantTopPickOut(BaseModel):
+    food_id: int
+    label: str
+
+
 class AssistantSearchOut(BaseModel):
     message: str
     companion: str = ""
+    suggestions: list[str] = []
+    action: str | None = None
+    top_pick: AssistantTopPickOut | None = None
     intent: AssistantIntentOut
     groups: list[AssistantGroupOut]
     total_foods: int

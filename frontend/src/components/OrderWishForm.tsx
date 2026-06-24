@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { api, ApiError } from "../api";
 import { haptic, hideKeyboard, showAlert } from "../telegram";
 
@@ -7,11 +8,17 @@ interface Props {
 }
 
 export default function OrderWishForm({ onCreated }: Props) {
+  const location = useLocation();
   const [title, setTitle] = useState("");
   const [details, setDetails] = useState("");
   const [budget, setBudget] = useState("");
   const [portions, setPortions] = useState(1);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const prefill = (location.state as { wishTitle?: string } | null)?.wishTitle;
+    if (prefill) setTitle(prefill);
+  }, [location.state]);
 
   const submit = async () => {
     const t = title.trim();

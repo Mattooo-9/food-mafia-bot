@@ -6,6 +6,7 @@ from backend.api.schemas import (
     AssistantGroupOut,
     AssistantIntentOut,
     AssistantSearchOut,
+    AssistantTopPickOut,
     CategorizeOut,
     FoodEvaluationOut,
     MarketInsightOut,
@@ -74,6 +75,9 @@ async def ai_search(
     return AssistantSearchOut(
         message=data["message"],
         companion=data.get("companion", ""),
+        suggestions=data.get("suggestions", []),
+        action=data.get("action"),
+        top_pick=AssistantTopPickOut(**data["top_pick"]) if data.get("top_pick") else None,
         intent=AssistantIntentOut(
             category=intent["category"],
             feed=intent["feed"],

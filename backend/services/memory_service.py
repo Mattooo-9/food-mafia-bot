@@ -17,6 +17,20 @@ logger = logging.getLogger(__name__)
 _MAX_QUERIES = 6
 _MAX_NOTE = 120
 
+_GROUP_CHIP: dict[str, str] = {
+    "Горячие блюда": "Суп",
+    "Закуски и салаты": "Салат",
+    "Выпечка и сладкое": "Выпечка",
+    "На каждый день": "Завтрак",
+}
+
+_TIME_CHIPS = {
+    "morning": "Завтрак",
+    "lunch": "Обед",
+    "evening": "Ужин",
+    "night": "Суп",
+}
+
 
 async def get_memory(session: AsyncSession, user_id: int) -> UserMemory:
     result = await session.execute(select(UserMemory).where(UserMemory.user_id == user_id))
@@ -59,14 +73,13 @@ def _refresh_note(mem: UserMemory, user: User) -> None:
     parts: list[str] = []
     top = _top_group(_loads_counts(mem.group_counts))
     if top:
-        parts.append(f"часто {top.lower()}")
+        chip = _GROUP_CHIP.get(top, top.lower())
+        parts.append(f"часто {chip.lower()}")
     if user.diet_preference:
-        parts.append(user.diet_preference.strip()[:50])
+        parts.append(user.diet_preference.strip()[:40])
     if mem.prefers_cheap:
-        parts.append("любите выгодное")
-    if mem.orders_delivered >= 2:
-        parts.append(f"{mem.orders_delivered} заказов")
-    mem.companion_note = ", ".join(parts)[:_MAX_NOTE]
+        parts.append("ищете выгодное")
+    mem.companion_note = " · ".join(parts)[:_MAX_NOTE]
 
 
 async def observe_search(
@@ -136,6 +149,61 @@ async def preferred_groups(session: AsyncSession, user_id: int) -> list[str]:
     mem = await get_memory(session, user_id)
     counts = _loads_counts(mem.group_counts)
     return [g for g, _ in counts.most_common(3) if g != "Разное"]
+
+
+async def enrich_intent(session: AsyncSession, user: User, intent: dict) -> dict:
+    """ИИ сам подставляет предпочтения — пользователь не крутит фильтры."""
+    from backend.services.nutrition_service import _hour_bucket
+    from backend.utils.categories import excluded_groups_for
+
+    mem = await get_memory(session, user.id)
+    raw = intent.get("query", "")
+
+    if intent.get("vague"):
+        chip = _TIME_CHIPS.get(_hour_bucket(), "Обед")
+        meal_cat = categorize_text(query=chip.lower())
+        if meal_cat.get("score", 0) >= 1:
+            intent["category_hint"] = meal_cat
+            intent["category"] = meal_cat["path"]
+            intent["exclude_groups"] = excluded_groups_for(meal_cat)
+            intent["strict_category"] = False
+
+    prefer = [g for g, _ in _loads_counts(mem.group_counts).most_common(3) if g != "Разное"]
+    if prefer and not raw:
+        intent["prefer_groups_memory"] = prefer
+
+    if mem.prefers_cheap and intent.get("feed") == "nearby" and not intent.get("price_max"):
+        intent["feed"] = "cheap"
+        labels = intent.setdefault("sort_labels", [])
+        if "сначала выгодные" not in labels:
+            labels.insert(0, "сначала выгодные")
+
+    intent["recent_queries"] = _loads_queries(mem.recent_queries)
+    return intent
+
+
+async def quick_suggestions(session: AsyncSession, user: User) -> list[str]:
+    from backend.services.nutrition_service import _hour_bucket
+
+    bucket = _hour_bucket()
+    out: list[str] = []
+    seen: set[str] = set()
+
+    def add(label: str) -> None:
+        key = label.lower()
+        if key not in seen and len(label) <= 24:
+            seen.add(key)
+            out.append(label)
+
+    add(_TIME_CHIPS.get(bucket, "Обед"))
+    mem = await get_memory(session, user.id)
+    for g, _ in _loads_counts(mem.group_counts).most_common(2):
+        add(_GROUP_CHIP.get(g, g))
+    for q in _loads_queries(mem.recent_queries)[:2]:
+        add(q)
+    for d in ("Суп", "Салат", "Рядом"):
+        add(d)
+    return out[:4]
 
 
 async def clear_memory(session: AsyncSession, user_id: int) -> None:

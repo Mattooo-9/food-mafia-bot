@@ -13,6 +13,7 @@ _NEW_WORDS = ("нов", "свеж", "только что")
 _POP_WORDS = ("популяр", "хит", "топ", "заказыва")
 _QUALITY_WORDS = ("лучш", "рейтинг", "качеств", "вкусн")
 _COOK_WORDS = ("повар", "кухн", "шеф", "готовит")
+_VAGUE_WORDS = ("поесть", "покушать", "кушать", "голод", "перекусить", "что-нибудь", "чтонибудь")
 _NOISE_WORDS = (
     "хочу",
     "нужен",
@@ -117,14 +118,17 @@ def parse_search_intent(query: str, *, has_location: bool) -> dict:
 
     exclude_groups = excluded_groups_for(cat)
     strict_category = cat.get("score", 0) >= 1 and cat.get("group") not in ("Разное", None)
+    vague = bool(raw) and cat.get("score", 0) < 1 and any(v in text for v in _VAGUE_WORDS)
 
     return {
         "query": raw,
+        "db_query": search_text_for_db(raw) if raw else "",
         "feed": feed,
         "category": category,
         "category_hint": cat,
         "exclude_groups": exclude_groups,
         "strict_category": strict_category,
+        "vague": vague,
         "max_distance_m": max_distance_m,
         "price_max": price_max,
         "min_rating": min_rating,

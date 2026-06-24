@@ -51,6 +51,9 @@ export interface AssistantGroup {
 export interface AssistantSearch {
   message: string;
   companion: string;
+  suggestions: string[];
+  action: string | null;
+  top_pick: { food_id: number; label: string } | null;
   intent: {
     category: string;
     feed: string;

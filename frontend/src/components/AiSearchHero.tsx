@@ -5,6 +5,7 @@ interface Props {
   draft: string;
   onDraftChange: (value: string) => void;
   onSearch: (value: string) => void;
+  suggestions?: string[];
   placeholder?: string;
 }
 
@@ -12,7 +13,8 @@ export default function AiSearchHero({
   draft,
   onDraftChange,
   onSearch,
-  placeholder = "Например: недорогой борщ рядом…",
+  suggestions = [],
+  placeholder = "Что хотите поесть?",
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -24,10 +26,19 @@ export default function AiSearchHero({
     onSearch(q);
   };
 
+  const pickChip = (label: string) => {
+    onDraftChange(label);
+    hideKeyboard();
+    haptic();
+    onSearch(label);
+  };
+
+  const chips = suggestions.length > 0 ? suggestions : ["Обед", "Суп", "Салат"];
+
   return (
-    <form className="ai-search-hero" onSubmit={submit}>
+    <div className="ai-search-hero">
       <div className="ai-search-glow" />
-      <div className="ai-search-inner">
+      <form className="ai-search-inner" onSubmit={submit}>
         <span className="ai-search-spark">✨</span>
         <input
           ref={inputRef}
@@ -45,9 +56,7 @@ export default function AiSearchHero({
           <button
             type="button"
             className="search-clear"
-            onClick={() => {
-              onDraftChange("");
-            }}
+            onClick={() => onDraftChange("")}
             aria-label="Очистить"
           >
             ✕
@@ -57,8 +66,14 @@ export default function AiSearchHero({
             Найти
           </button>
         )}
+      </form>
+      <div className="ai-chips">
+        {chips.map((chip) => (
+          <button key={chip} type="button" className="ai-chip" onClick={() => pickChip(chip)}>
+            {chip}
+          </button>
+        ))}
       </div>
-      <p className="ai-search-hint">Напишите «суп», «салат» — покажу только подходящее, без лишнего</p>
-    </form>
+    </div>
   );
 }

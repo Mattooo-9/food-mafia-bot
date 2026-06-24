@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api";
+import AiMessage from "../components/AiMessage";
 import AiResultGroups from "../components/AiResultGroups";
 import AiSearchHero from "../components/AiSearchHero";
 import LocationBar from "../components/LocationBar";
@@ -68,25 +69,22 @@ export default function FeedPage() {
     <div className="page">
       <h1 className="page-title">Еда Рядом</h1>
 
-      <AiSearchHero draft={draft} onDraftChange={setDraft} onSearch={runSearch} />
+      <AiSearchHero
+        draft={draft}
+        onDraftChange={setDraft}
+        onSearch={runSearch}
+        suggestions={result?.suggestions}
+      />
       <LocationBar />
 
-      {result && (
-        <div className="ai-message">
-          <span className="ai-message-icon">🤖</span>
-          <p>{result.message}</p>
-          {result.companion && !result.message.includes(result.companion) && (
-            <p className="hint" style={{ marginTop: 6 }}>{result.companion}</p>
-          )}
-        </div>
-      )}
+      {result && <AiMessage result={result} wishQuery={query} />}
 
       {loading ? (
         <Spinner />
       ) : empty ? (
         <div className="empty">
           <span className="emoji">🔮</span>
-          Ничего не нашёл — попробуйте «борщ», «суп» или «салат»
+          Ничего рядом — нажмите «Запрос поварам» выше
         </div>
       ) : (
         <AiResultGroups groups={result?.groups ?? []} onToggleFavoriteFood={toggleFavorite} />

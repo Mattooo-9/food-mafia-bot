@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
+import AiMessage from "../components/AiMessage";
 import AiResultGroups from "../components/AiResultGroups";
 import AiSearchHero from "../components/AiSearchHero";
 import LocationBar from "../components/LocationBar";
@@ -61,16 +62,12 @@ export default function CooksPage() {
         draft={draft}
         onDraftChange={setDraft}
         onSearch={runSearch}
-        placeholder="Например: повар с выпечкой рядом…"
+        suggestions={result?.suggestions}
+        placeholder="Повар рядом — например «выпечка»"
       />
       <LocationBar />
 
-      {result && (
-        <div className="ai-message">
-          <span className="ai-message-icon">🤖</span>
-          <p>{result.message}</p>
-        </div>
-      )}
+      {result && <AiMessage result={result} wishQuery={query} />}
 
       {loading ? (
         <Spinner />
