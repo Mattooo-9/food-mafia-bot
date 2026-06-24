@@ -10,18 +10,19 @@ export default function WellnessCard() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (user?.wellness_consent) {
-      void api.getWellness().then((w) => setTip(w.message));
-    }
-  }, [user?.wellness_consent]);
+    void api.getWellness().then((w) => setTip(w.message));
+  }, [user?.id, user?.wellness_consent, user?.diet_preference]);
+
+  useEffect(() => {
+    setDiet(user?.diet_preference ?? "");
+  }, [user?.diet_preference]);
 
   if (!user) return null;
 
-  const toggle = async () => {
+  const togglePersonalize = async () => {
     setSaving(true);
     try {
-      const next = !user.wellness_consent;
-      const w = await api.setWellness(next, diet || null);
+      const w = await api.setWellness(!user.wellness_consent, diet || null);
       setTip(w.message);
       haptic("success");
       await refresh();
@@ -33,41 +34,41 @@ export default function WellnessCard() {
     }
   };
 
+  const saveDiet = async () => {
+    if (diet === (user.diet_preference ?? "")) return;
+    try {
+      const w = await api.setWellness(user.wellness_consent, diet || null);
+      setTip(w.message);
+      await refresh();
+    } catch {
+      /* ignore blur errors */
+    }
+  };
+
   return (
     <div className="card wellness-card">
-      <div className="row between">
-        <strong>🌿 Гармония питания</strong>
+      <strong>🌿 Подсказки по балансу</strong>
+      {tip && <p className="wellness-tip">{tip}</p>}
+      <div className="field" style={{ marginTop: 10 }}>
+        <input
+          placeholder="Предпочтения: без мяса, легко…"
+          value={diet}
+          onChange={(e) => setDiet(e.target.value)}
+          onBlur={() => void saveDiet()}
+        />
+      </div>
+      <div className="row between" style={{ marginTop: 12 }}>
+        <span className="hint">Учитывать прошлые запросы</span>
         <label className="toggle">
           <input
             type="checkbox"
             checked={user.wellness_consent}
             disabled={saving}
-            onChange={() => void toggle()}
+            onChange={() => void togglePersonalize()}
           />
           <span />
         </label>
       </div>
-      <p className="hint" style={{ marginTop: 8 }}>
-        Анонимные подсказки по балансу — только с вашего согласия. История поиска сохраняется
-        только при включённой опции.
-      </p>
-      {user.wellness_consent && (
-        <>
-          {tip && <p className="wellness-tip">{tip}</p>}
-          <div className="field" style={{ marginTop: 10 }}>
-            <input
-              placeholder="Предпочтения: без сладкого, легко…"
-              value={diet}
-              onChange={(e) => setDiet(e.target.value)}
-              onBlur={() => {
-                if (diet !== (user.diet_preference ?? "")) {
-                  void api.setWellness(true, diet || null).then(() => refresh());
-                }
-              }}
-            />
-          </div>
-        </>
-      )}
     </div>
   );
 }

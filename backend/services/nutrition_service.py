@@ -1,4 +1,4 @@
-"""Гармоничные рекомендации и подсказки по питанию — только с согласия пользователя."""
+"""Гармоничные рекомендации — работают всегда; история учитывается только с согласия."""
 
 from __future__ import annotations
 
@@ -7,38 +7,40 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.models import Food, User
+from backend.models import User
 from backend.services import ai_analyst_service, food_service
 from backend.utils.categories import SEP, categorize_text, food_group, normalize_category
 
-# Натуральные сочетания: группа → что дополняет рацион
 _BALANCE_HINTS: dict[str, str] = {
-    "Горячие блюда": "Добавьте салат или лёгкий напиток — баланс тепла и свежести.",
-    "Выпечка и сладкое": "После сладкого хорошо сочетается тёплый чай или лёгкий суп.",
-    "Закуски и салаты": "К салату гармонично подойдёт сытное горячее или цельный хлеб.",
-    "На каждый день": "Чередуйте лёгкие завтраки с полноценными обедами — так проще держать ритм.",
+    "Горячие блюда": "К горячему хорошо добавить салат или тёплый напиток.",
+    "Выпечка и сладкое": "Сладкое лучше в умеренной порции — дополните чаем или супом.",
+    "Закуски и салаты": "Салату к месту сытное горячее или цельный хлеб.",
+    "На каждый день": "Чередуйте лёгкие и сытные приёмы пищи — так проще держать баланс.",
 }
 
 _LIGHT_GROUPS = {"Закуски и салаты", "На каждый день"}
 _HEAVY_GROUPS = {"Горячие блюда", "Выпечка и сладкое"}
 
+_MEAT_MARKERS = ("мяс", "свинин", "говядин", "баран", "котлет", "фарш", "бекон")
+_SWEET_MARKERS = ("слад", "торт", "десерт", "шоколад", "печень")
+
 _RECIPE_IDEAS: dict[str, list[str]] = {
     "Супы": [
         "Домашний борщ на говядине с запечёнными овощами",
-        "Крем-суп из тыквы с имбирём — без сливок, на овощном бульоне",
-        "Лёгкий куриный бульон с зеленью и домашней лапшой",
+        "Крем-суп из тыквы с имбирём на овощном бульоне",
+        "Лёгкий куриный бульон с зеленью",
     ],
     "Салаты": [
-        "Салат из сезонных овощей с оливковым маслом и зеленью",
-        "Винегрет с ферментированной капустой — просто и полезно",
+        "Салат из сезонных овощей с оливковым маслом",
+        "Винегрет с капустой — просто и полезно",
     ],
     "Основные": [
         "Запечённая рыба с лимоном и травами",
-        "Тушёные овощи с крупой — сытно и натурально",
+        "Тушёные овощи с крупой",
     ],
     "Выпечка": [
         "Цельнозерновой хлеб на закваске",
-        "Овсяные оладьи без сахара — с ягодами",
+        "Овсяные оладьи с ягодами",
     ],
 }
 
@@ -52,6 +54,17 @@ def _hour_bucket() -> str:
     if 16 <= h < 21:
         return "evening"
     return "night"
+
+
+def _base_tip_for_hour() -> tuple[str, str]:
+    bucket = _hour_bucket()
+    if bucket == "morning":
+        return "Сейчас уместно что-то лёгкое и тёплое.", "На каждый день"
+    if bucket == "lunch":
+        return "На обед хорошо сытное горячее и свежий салат.", "Горячие блюда"
+    if bucket == "evening":
+        return "Вечером — умеренная порция, тёплое и несложное.", "Горячие блюда"
+    return "Поздно — лучше лёгкое: суп, салат или чай.", "Закуски и салаты"
 
 
 async def _recent_search_groups(session: AsyncSession, user_id: int) -> list[str]:
@@ -71,48 +84,59 @@ async def _recent_search_groups(session: AsyncSession, user_id: int) -> list[str
     return groups
 
 
+def food_matches_diet(food_name: str, food_category: str, diet: str | None) -> bool:
+    if not diet:
+        return True
+    d = diet.lower()
+    blob = f"{food_name} {food_category}".lower()
+    if any(m in d for m in ("без мяс", "веган", "пост")):
+        if food_group(food_category) == "Горячие блюда" and "Мясные" in food_category:
+            return False
+        if any(m in blob for m in _MEAT_MARKERS):
+            return False
+    if "без слад" in d or "мало сахар" in d:
+        if food_group(food_category) == "Выпечка и сладкое":
+            if "Десерт" in food_category or any(m in blob for m in _SWEET_MARKERS):
+                return False
+    if "легк" in d or "лёгк" in d:
+        if food_group(food_category) in _HEAVY_GROUPS and "Десерт" in food_category:
+            return False
+    return True
+
+
 async def wellness_tip(session: AsyncSession, user: User) -> dict:
-    if not user.wellness_consent:
-        return {
-            "consented": False,
-            "message": "",
-            "suggestion": None,
-        }
+    msg, prefer = _base_tip_for_hour()
+    personalized = False
 
-    bucket = _hour_bucket()
-    recent = await _recent_search_groups(session, user.id)
-
-    if bucket == "morning":
-        msg = "Утро — время лёгкого и тёплого: каша, омлет или свежий чай."
-        prefer = "На каждый день"
-    elif bucket == "lunch":
-        msg = "Обед — сытное горячее и салат дают энергию без тяжести."
-        prefer = "Горячие блюда"
-    elif bucket == "evening":
-        msg = "Вечер — умеренная порция и тёплое блюдо помогают спокойно завершить день."
-        prefer = "Горячие блюда"
-    else:
-        msg = "Поздний перекус — лучше лёгкое: чай, салат или суп."
-        prefer = "Закуски и салаты"
-
-    if recent:
-        last = recent[0]
-        if last in _HEAVY_GROUPS and bucket in ("evening", "night"):
-            msg = "Вчера было сытно — сегодня можно выбрать что-то полегче: суп или салат."
-            prefer = "Закуски и салаты"
-        elif last in _LIGHT_GROUPS and bucket == "lunch":
-            msg = "После лёгких блюд на обед хорошо подойдёт сытное горячее."
-            prefer = "Горячие блюда"
+    if user.wellness_consent:
+        personalized = True
+        recent = await _recent_search_groups(session, user.id)
+        bucket = _hour_bucket()
+        if recent:
+            last = recent[0]
+            if last in _HEAVY_GROUPS and bucket in ("evening", "night"):
+                msg = "Недавно было сытно — сейчас уместнее суп или салат."
+                prefer = "Закуски и салаты"
+            elif last in _LIGHT_GROUPS and bucket == "lunch":
+                msg = "После лёгкого — на обед логично сытное горячее."
+                prefer = "Горячие блюда"
 
     if user.diet_preference:
-        msg = f"{msg} Учитываю ваши предпочтения: {user.diet_preference}."
+        msg = f"{msg} Учитываю: {user.diet_preference}."
 
     return {
-        "consented": True,
+        "personalized": personalized,
         "message": msg,
         "suggestion": prefer,
         "balance_hint": _BALANCE_HINTS.get(prefer, ""),
     }
+
+
+def balance_hint_for_intent(cat_hint: dict) -> str:
+    if cat_hint.get("score", 0) < 1 or cat_hint.get("group") == "Разное":
+        return ""
+    group = cat_hint["group"]
+    return _BALANCE_HINTS.get(group, "")
 
 
 async def harmonious_recommendations(
@@ -121,18 +145,16 @@ async def harmonious_recommendations(
     *,
     limit: int = 12,
 ) -> list[tuple]:
-    """Рекомендации с учётом времени суток и согласия на wellness."""
-    if not user.wellness_consent:
-        return []
-
     tip = await wellness_tip(session, user)
     prefer_group = tip.get("suggestion") or "Горячие блюда"
 
-    all_recs = await ai_analyst_service.get_recommendations(session, user, limit=limit * 2)
+    all_recs = await ai_analyst_service.get_recommendations(session, user, limit=limit * 3)
     matched: list[tuple] = []
     rest: list[tuple] = []
     for item in all_recs:
         food = item[0]
+        if not food_matches_diet(food.name, food.category, user.diet_preference):
+            continue
         group = food_group(food.category)
         if group == prefer_group:
             matched.append(item)
@@ -151,7 +173,6 @@ async def recipe_hints_for_cook(
     *,
     context: str = "",
 ) -> list[str]:
-    """Контекстные идеи блюд для повара — по теме, без лишнего."""
     foods = await food_service.get_cook_foods(session, cook.id, include_inactive=True)
     existing_cats = {normalize_category(f.category) for f in foods}
 
@@ -163,9 +184,7 @@ async def recipe_hints_for_cook(
         for idea in _RECIPE_IDEAS.get(key, []):
             hints.append(idea)
         if not hints and cat["group"] != "Разное":
-            hints.append(
-                f"Добавьте блюдо в категории «{cat['label']}» — сейчас на это есть спрос."
-            )
+            hints.append(f"Спрос есть на «{cat['label']}» — добавьте блюдо в эту тему.")
 
     if not hints:
         for cat_name, ideas in _RECIPE_IDEAS.items():

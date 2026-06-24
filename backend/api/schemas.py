@@ -349,7 +349,7 @@ class OrderWishOut(BaseModel):
 
 
 class WellnessIn(BaseModel):
-    consent: bool
+    consent: bool | None = None
     diet_preference: str | None = Field(default=None, max_length=256)
 
 

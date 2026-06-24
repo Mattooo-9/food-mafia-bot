@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.models import User
 from backend.services import ai_analyst_service, favorite_service, food_service
 from backend.services.food_service import FoodWithDistance
+from backend.services.nutrition_service import balance_hint_for_intent, food_matches_diet, wellness_tip
 from backend.utils.categories import SEP, normalize_category
 from backend.utils.search_intent import parse_search_intent
 
@@ -21,12 +22,16 @@ def _dist_label(m: float | None) -> str:
     return f"{m / 1000:.1f} км"
 
 
-def _build_message(intent: dict, food_count: int, cook_count: int) -> str:
+def _build_message(intent: dict, food_count: int, cook_count: int, *, wellness: str = "") -> str:
     q = intent["query"]
     if not q:
+        if wellness:
+            if food_count or cook_count:
+                return f"{wellness} Подобрал подходящее рядом."
+            return wellness
         if food_count or cook_count:
-            return "Подобрал лучшее рядом — напишите, что хотите, и я сам всё уточню."
-        return "Напишите, что хотите поесть — я сам разложу по группам и найду ближайшее."
+            return "Подобрал лучшее рядом — напишите, что хотите."
+        return "Напишите, что хотите поесть — подберу по смыслу и расстоянию."
 
     cat = intent["category_hint"]
     parts: list[str] = []
@@ -44,15 +49,22 @@ def _build_message(intent: dict, food_count: int, cook_count: int) -> str:
     total = food_count + cook_count
     if total == 0:
         if cat.get("group") != "Разное" and cat.get("score", 0) >= 1:
-            return f"По «{q}» пока нет подходящих блюд рядом — только {cat['label'].lower()}."
-        return f"По запросу «{q}» пока пусто — попробуйте проще: «борщ», «салат», «недорого»."
+            return (
+                f"По «{q}» рядом пока пусто. Опубликуйте запрос в «Заказах» — "
+                f"повара увидят и возьмут, если готовы готовить {cat['label'].lower()}."
+            )
+        return f"По «{q}» ничего не нашёл. Попробуйте короче или опубликуйте запрос поварам."
 
     tail = []
     if food_count:
         tail.append(f"{food_count} блюд")
     if cook_count:
         tail.append(f"{cook_count} поваров")
-    return f"{' · '.join(parts)} — {' и '.join(tail)}."
+    head = " · ".join(parts)
+    line = f"{head} — {' и '.join(tail)}."
+    if wellness and cat.get("score", 0) >= 1:
+        return f"{line} {wellness}"
+    return line
 
 
 async def _score_food(session: AsyncSession, item: FoodWithDistance) -> int:
@@ -207,21 +219,19 @@ async def assistant_search(
         if not q:
             from backend.services import nutrition_service
 
-            recs = await nutrition_service.harmonious_recommendations(session, viewer, limit=12)
-            if not recs:
-                recs_raw = await ai_analyst_service.get_recommendations(session, viewer, limit=12)
-                recs = recs_raw
-            else:
-                recs_raw = recs
+            recs_raw = await nutrition_service.harmonious_recommendations(session, viewer, limit=12)
             seen = {i.food.id for i in food_items}
-            for item in recs_raw:
-                if isinstance(item, tuple) and len(item) == 3:
-                    food, _ev, dist = item
-                else:
-                    continue
+            for food, _ev, dist in recs_raw:
                 if food.id not in seen:
                     food_items.insert(0, FoodWithDistance(food=food, distance_m=dist))
                     seen.add(food.id)
+
+    if viewer.diet_preference:
+        food_items = [
+            i
+            for i in food_items
+            if food_matches_diet(i.food.name, i.food.category, viewer.diet_preference)
+        ]
 
     if include_cooks:
         cook_items = await food_service.search_cooks(
@@ -260,17 +270,18 @@ async def assistant_search(
     fav_foods = await favorite_service.get_favorite_food_ids(session, viewer)
     fav_cooks = await favorite_service.get_favorite_cook_ids(session, viewer)
 
-    wellness_note = ""
-    if viewer.wellness_consent:
-        from backend.services import nutrition_service
+    tip = await wellness_tip(session, viewer)
+    wellness_note = tip.get("message", "")
+    if query.strip() and intent.get("strict_category"):
+        hint = balance_hint_for_intent(intent["category_hint"])
+        if hint:
+            wellness_note = hint
 
-        tip = await nutrition_service.wellness_tip(session, viewer)
-        if tip.get("message"):
-            wellness_note = tip["message"]
-
-    msg = _build_message(intent, len(food_items), len(cook_items))
-    if wellness_note and not query.strip():
-        msg = f"{wellness_note} {msg}"
+    msg = _build_message(
+        intent, len(food_items), len(cook_items), wellness=wellness_note if not query.strip() else "",
+    )
+    if query.strip() and wellness_note and intent.get("strict_category"):
+        msg = f"{msg} {wellness_note}".strip()
 
     return {
         "message": msg,
