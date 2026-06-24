@@ -219,6 +219,7 @@ class AssistantGroupOut(BaseModel):
 
 class AssistantSearchOut(BaseModel):
     message: str
+    companion: str = ""
     intent: AssistantIntentOut
     groups: list[AssistantGroupOut]
     total_foods: int

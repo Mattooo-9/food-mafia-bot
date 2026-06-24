@@ -23,7 +23,11 @@ def _ensure_sqlite_dir(url: str) -> None:
 
 _ensure_sqlite_dir(settings.database_url)
 
-engine = create_async_engine(settings.database_url, echo=False, pool_pre_ping=True)
+_engine_kwargs: dict = {"echo": False, "pool_pre_ping": True}
+if settings.database_url.startswith("postgresql"):
+    _engine_kwargs.update(pool_size=5, max_overflow=10)
+
+engine = create_async_engine(settings.database_url, **_engine_kwargs)
 async_session_factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
 

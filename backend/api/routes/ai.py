@@ -23,6 +23,7 @@ router = APIRouter(tags=["ai"])
 
 @router.get("/ai/categorize", response_model=CategorizeOut)
 async def ai_categorize(
+    user: CurrentUser,
     name: str = Query(default=""),
     description: str = Query(default=""),
     q: str = Query(default=""),
@@ -72,6 +73,7 @@ async def ai_search(
         )
     return AssistantSearchOut(
         message=data["message"],
+        companion=data.get("companion", ""),
         intent=AssistantIntentOut(
             category=intent["category"],
             feed=intent["feed"],
@@ -173,7 +175,7 @@ async def price_suggestion(
 
 
 @router.get("/ai/food/{food_id}/evaluation", response_model=FoodEvaluationOut)
-async def food_evaluation(food_id: int, session: SessionDep) -> FoodEvaluationOut:
+async def food_evaluation(food_id: int, user: CurrentUser, session: SessionDep) -> FoodEvaluationOut:
     ev = await ai_analyst_service.get_food_evaluation(session, food_id)
     if ev is None:
         food = await food_service.get_food(session, food_id)

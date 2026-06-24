@@ -50,6 +50,7 @@ export interface AssistantGroup {
 
 export interface AssistantSearch {
   message: string;
+  companion: string;
   intent: {
     category: string;
     feed: string;

@@ -163,6 +163,14 @@ async def change_status(
             order.payment_status = PaymentStatus.PAID.value
         await _accrue_platform_commission(session, order)
         referral_notify = await referral_service.on_order_delivered(session, order)
+        if food is not None:
+            from backend.services import memory_service
+
+            buyer = await session.get(User, order.buyer_id)
+            if buyer is not None:
+                await memory_service.observe_order_delivered(
+                    session, buyer, total_price=order.total_price, category=food.category,
+                )
 
     await session.commit()
     order = await get_order(session, order_id)

@@ -7,6 +7,7 @@ from backend.models.order_wish import OrderWish, OrderWishStatus
 from backend.models.platform_balance import PlatformBalance
 from backend.models.review import Review
 from backend.models.search_history import SearchHistory
+from backend.models.user_memory import UserMemory
 from backend.models.subscription import Subscription
 from backend.models.user import User
 
@@ -28,4 +29,5 @@ __all__ = [
     "SearchHistory",
     "OrderWish",
     "OrderWishStatus",
+    "UserMemory",
 ]

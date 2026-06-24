@@ -78,5 +78,8 @@ async def my_searches(user: CurrentUser, session: SessionDep) -> list[SearchHist
 
 @router.delete("/me/searches", response_model=OkOut)
 async def clear_my_searches(user: CurrentUser, session: SessionDep) -> OkOut:
+    from backend.services import memory_service
+
     await search_history_service.clear_searches(session, user.id)
+    await memory_service.clear_memory(session, user.id)
     return OkOut()

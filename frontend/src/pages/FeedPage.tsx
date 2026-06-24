@@ -75,6 +75,9 @@ export default function FeedPage() {
         <div className="ai-message">
           <span className="ai-message-icon">🤖</span>
           <p>{result.message}</p>
+          {result.companion && !result.message.includes(result.companion) && (
+            <p className="hint" style={{ marginTop: 6 }}>{result.companion}</p>
+          )}
         </div>
       )}
 

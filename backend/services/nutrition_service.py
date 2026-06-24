@@ -144,9 +144,10 @@ async def harmonious_recommendations(
     user: User,
     *,
     limit: int = 12,
+    prefer_groups: list[str] | None = None,
 ) -> list[tuple]:
     tip = await wellness_tip(session, user)
-    prefer_group = tip.get("suggestion") or "Горячие блюда"
+    prefer_group = (prefer_groups or [None])[0] or tip.get("suggestion") or "Горячие блюда"
 
     all_recs = await ai_analyst_service.get_recommendations(session, user, limit=limit * 3)
     matched: list[tuple] = []

@@ -55,6 +55,17 @@ async def create_wish(
     session.add(wish)
     await session.commit()
     wish = await get_wish(session, wish.id)
+    from backend.services import memory_service
+
+    await memory_service.observe_search(
+        session,
+        buyer,
+        title,
+        category_hint=cat,
+        results_count=0,
+        price_max=budget_max,
+    )
+    await session.commit()
     await notification_service.notify_cooks_new_wish(session, wish)
     logger.info("OrderWish #%s created by user %s", wish.id, buyer.id)
     return wish

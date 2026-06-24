@@ -63,6 +63,7 @@ jobs:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           ADMIN_ID: ${{ secrets.ADMIN_ID }}
           WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           REDIS_URL: ${{ secrets.REDIS_URL }}
           CLUSTER_STANDBY_URL: ${{ vars.CLUSTER_STANDBY_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}

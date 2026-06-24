@@ -108,12 +108,17 @@ def main() -> None:
     for key, value in cluster_env.items():
         api("PUT", f"/services/{service_id}/env-vars/{key}", {"value": value})
 
-    # Remove stale Postgres URL from old blueprint — use SQLite in container.
-    try:
-        api("DELETE", f"/services/{service_id}/env-vars/DATABASE_URL")
-        print("Removed legacy DATABASE_URL (using SQLite in container)")
-    except SystemExit:
-        pass
+    # Postgres (Neon/Render) — постоянная БД с памятью пользователей.
+    db_url = os.environ.get("DATABASE_URL")
+    if db_url:
+        api("PUT", f"/services/{service_id}/env-vars/DATABASE_URL", {"value": db_url})
+        print("Set DATABASE_URL (Postgres)")
+    else:
+        try:
+            api("DELETE", f"/services/{service_id}/env-vars/DATABASE_URL")
+            print("No DATABASE_URL — SQLite in container")
+        except SystemExit:
+            pass
 
     # deploy_only — pull image, no build
     deploy = api("POST", f"/services/{service_id}/deploys", {"deployMode": "deploy_only"})
