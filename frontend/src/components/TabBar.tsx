@@ -5,7 +5,8 @@ interface Props {
   isCook: boolean;
 }
 
-const tabClass = ({ isActive }: { isActive: boolean }) => (isActive ? "active" : "");
+const tabClass = ({ isActive }: { isActive: boolean }) =>
+  isActive ? "active tab-active" : "";
 
 export default function TabBar({ isCook }: Props) {
   const tabs = TABS.filter((t) => !t.cookOnly || isCook);

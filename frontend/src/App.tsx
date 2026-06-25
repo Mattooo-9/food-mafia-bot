@@ -9,7 +9,6 @@ import FavoritesPage from "./pages/FavoritesPage";
 import FeedPage from "./pages/FeedPage";
 import FoodPage from "./pages/FoodPage";
 import MyKitchenPage from "./pages/MyKitchenPage";
-import NotFoundPage from "./pages/NotFoundPage";
 import OrdersPage from "./pages/OrdersPage";
 import ProfilePage from "./pages/ProfilePage";
 import { UserProvider, useUser } from "./UserContext";
@@ -56,7 +55,7 @@ function AppInner() {
         <Route path="/my-kitchen" element={<CookOnly><MyKitchenPage /></CookOnly>} />
         <Route path="/my-kitchen/dish/new" element={<CookOnly><DishFormPage /></CookOnly>} />
         <Route path="/my-kitchen/dish/:id" element={<CookOnly><DishFormPage /></CookOnly>} />
-        <Route path="*" element={<NotFoundPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <TabBar isCook={user.is_cook} />
     </div>

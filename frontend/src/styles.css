@@ -108,7 +108,13 @@ body {
   color: var(--accent);
   font-weight: 700;
   background: var(--gradient-soft);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), var(--glow-violet);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), var(--glow-violet);
+}
+
+.tabbar a:first-child.active {
+  color: #fff;
+  background: linear-gradient(145deg, rgba(0, 223, 255, 0.22), rgba(168, 85, 255, 0.18));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 0 20px rgba(0, 223, 255, 0.25);
 }
 
 .tabbar .tab-icon {

@@ -95,15 +95,15 @@ export const KITCHEN_TABS = [
   { id: "foods" as const, label: "Блюда" },
 ];
 
-/** Вкладки навигации — по алфавиту (ru). */
+/** Вкладки — лента первая (главная). */
 export const TABS = [
-  { cookOnly: false, end: false, icon: "❤️", label: "Избранное", to: "/favorites" },
-  { cookOnly: false, end: false, icon: "📦", label: "Заказы", to: "/orders" },
-  { cookOnly: true, end: false, icon: "🧑‍🍳", label: "Кухня", to: "/my-kitchen" },
   { cookOnly: false, end: true, icon: "🍲", label: "Лента", to: "/" },
   { cookOnly: false, end: false, icon: "👨‍🍳", label: "Повара", to: "/cooks" },
+  { cookOnly: false, end: false, icon: "📦", label: "Заказы", to: "/orders" },
+  { cookOnly: false, end: false, icon: "❤️", label: "Избранное", to: "/favorites" },
+  { cookOnly: true, end: false, icon: "🧑‍🍳", label: "Кухня", to: "/my-kitchen" },
   { cookOnly: false, end: false, icon: "👤", label: "Профиль", to: "/profile" },
-].sort((a, b) => a.label.localeCompare(b.label, "ru"));
+];
 
 export function sortRu(values: string[]): string[] {
   return [...values].sort((a, b) => {

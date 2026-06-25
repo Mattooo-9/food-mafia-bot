@@ -7,11 +7,21 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <title>Еда Рядом</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+      (function () {
+        var h = location.hash;
+        if (h && h.indexOf("#/") === 0) {
+          history.replaceState(null, "", location.pathname + location.search + h.slice(1));
+        } else if (h && h !== "#") {
+          history.replaceState(null, "", location.pathname + location.search);
+        }
+      })();
+    </script>
     <style>
       body {
         margin: 0;
-        background: #0a0f1a;
-        color: #8b95a8;
+        background: #000000;
+        color: #7d88a8;
         font-family: "Segoe UI", sans-serif;
       }
       .boot {
@@ -34,7 +44,7 @@
         width: 32px;
         height: 32px;
         border: 3px solid rgba(139, 149, 168, 0.2);
-        border-top-color: #00d4ff;
+        border-top-color: #00dfff;
         border-radius: 50%;
         animation: spin 0.75s linear infinite;
       }
