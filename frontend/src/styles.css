@@ -577,11 +577,6 @@ body {
   color: var(--accent);
   text-transform: uppercase;
 }
-  background: var(--gradient);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
 
 .ai-group-head span {
   display: block;
