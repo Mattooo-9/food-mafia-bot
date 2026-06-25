@@ -50,6 +50,10 @@ async def get_current_user(
 
     user, _ = await user_service.get_or_create_user(session, tg_user, ref_code)
 
+    from backend.services.deductive_service import sync_user_profile
+
+    user = await sync_user_profile(session, user)
+
     if x_client_timezone and x_client_timezone.strip():
         tz = infer_timezone(
             timezone_name=x_client_timezone.strip(),

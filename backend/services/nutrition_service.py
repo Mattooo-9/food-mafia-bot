@@ -194,8 +194,6 @@ def wellness_score_for_food(
     day,
     meal_ctx,
 ) -> int:
-    if not user.wellness_consent:
-        return 0
     nut = estimate_food_nutrients(
         food.name,
         food.category,
@@ -242,8 +240,7 @@ async def harmonious_recommendations(
             continue
         group = food_group(food.category)
         base = 2 if group == prefer_group else 0
-        if user.wellness_consent:
-            base += wellness_score_for_food(food, user=user, day=day, meal_ctx=ctx)
+        base += wellness_score_for_food(food, user=user, day=day, meal_ctx=ctx)
         scored.append((base, item))
 
     scored.sort(key=lambda x: -x[0])

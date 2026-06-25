@@ -21,7 +21,7 @@ export default function PrivacyCard({ onCleared }: Props) {
 
   return (
     <div className="card privacy-card gloss-card">
-      <strong>🔒 Приватность</strong>
+      <strong>Приватность</strong>
       <p className="hint privacy-text">
         Имена других пользователей скрыты. Координаты не видны никому. Данные привязаны только к вашему Telegram.
       </p>

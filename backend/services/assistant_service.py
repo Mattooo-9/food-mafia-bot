@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.models import User
 from backend.services import favorite_service, food_service, memory_service
 from backend.services.food_service import FoodWithDistance
-from backend.services.insights_service import activity_counts
 from backend.utils.categories import SEP, food_group, normalize_category
 from backend.utils.search_intent import parse_search_intent
 
@@ -42,7 +41,7 @@ def _score_food_fast(
             cooking_minutes=food.cooking_time_minutes,
             cook_online=bool(cook.is_online),
         )
-    if viewer and viewer.wellness_consent and meal_ctx is not None and wellness_day is not None:
+    if viewer and meal_ctx is not None and wellness_day is not None:
         from backend.services.nutrition_service import wellness_score_for_food
 
         base += wellness_score_for_food(
@@ -194,11 +193,9 @@ async def assistant_search(
     weak = set(intent.get("weak_groups") or [])
     meal_ctx = intent.get("meal_context")
     prefer_groups = await memory_service.preferred_groups(session, viewer.id)
-    wellness_day = None
-    if viewer.wellness_consent:
-        from backend.services.wellness_tracker import get_day_nutrition
+    from backend.services.wellness_tracker import get_day_nutrition
 
-        _, wellness_day = await get_day_nutrition(session, viewer)
+    _, wellness_day = await get_day_nutrition(session, viewer)
     if intent.get("prefer_groups_memory"):
         prefer_groups = intent["prefer_groups_memory"] + [
             g for g in prefer_groups if g not in intent["prefer_groups_memory"]
@@ -324,8 +321,6 @@ async def assistant_search(
     )
 
     action: str | None = None
-    if state == "search_empty":
-        action = "create_wish"
 
     if query.strip():
         await memory_service.observe_search(
@@ -338,17 +333,22 @@ async def assistant_search(
         )
         await session.commit()
 
-    activity = await activity_counts(session, viewer) if scope == "feed" else None
+    activity = None
 
     from backend.services.meal_context import context_payload
+    from backend.services.deductive_service import feed_companion
 
     ctx_out = context_payload(meal_ctx) if meal_ctx else None
-    if viewer.wellness_consent and scope == "feed":
-        from backend.services.nutrition_service import feed_wellness_context
-
-        wellness_ctx = await feed_wellness_context(session, viewer)
-        if ctx_out and wellness_ctx:
-            ctx_out = {**ctx_out, **wellness_ctx}
+    companion = ""
+    if scope == "feed":
+        companion = await feed_companion(
+            session,
+            viewer,
+            state=state,
+            meal_ctx=meal_ctx,
+            has_location=has_location,
+            query=query,
+        )
 
     return {
         "state": state,
@@ -356,7 +356,7 @@ async def assistant_search(
         "activity": activity,
         "context": ctx_out,
         "message": "",
-        "companion": "",
+        "companion": companion,
         "suggestions": suggestions,
         "action": action,
         "top_pick": {

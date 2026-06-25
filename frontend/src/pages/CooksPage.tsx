@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
 import AiResultGroups from "../components/AiResultGroups";
 import AiSearchHero from "../components/AiSearchHero";
-import LocationBar from "../components/LocationBar";
 import Spinner from "../components/Spinner";
 import { haptic } from "../telegram";
 import type { AssistantSearch, Cook } from "../types";
@@ -65,7 +64,6 @@ export default function CooksPage() {
         showChips={(result?.suggestions?.length ?? 0) > 0}
         placeholder={result?.context?.search_placeholder ?? "Категория или имя"}
       />
-      <LocationBar active={result?.has_location} />
 
       <header className="section-bar">
         <h2>{query.trim() || "Рядом"}</h2>

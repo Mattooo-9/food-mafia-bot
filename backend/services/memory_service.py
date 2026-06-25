@@ -147,7 +147,7 @@ async def observe_order_delivered(
         mem.group_counts = json.dumps(dict(counts), ensure_ascii=False)
         mem.last_group = cat["group"]
     _refresh_note(mem, user)
-    if user.wellness_consent and food_name:
+    if food_name:
         from backend.services.wellness_tracker import log_food_meal
 
         await log_food_meal(

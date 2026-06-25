@@ -4,14 +4,8 @@ import { api, ApiError } from "../api";
 import AiResultGroups from "../components/AiResultGroups";
 import AiSearchHero from "../components/AiSearchHero";
 import HomeHeader from "../components/HomeHeader";
-import OnboardingStrip from "../components/OnboardingStrip";
 import Spinner from "../components/Spinner";
-import {
-  activitySummary,
-  feedHasList,
-  feedSectionTitle,
-  feedShowWish,
-} from "../feedState";
+import { feedHasList, feedSectionTitle } from "../feedState";
 import { t } from "../i18n";
 import { haptic, showAlert } from "../telegram";
 import type { AssistantSearch, Food } from "../types";
@@ -78,31 +72,20 @@ export default function FeedPage() {
   const state = result?.state ?? "browse";
   const searched = Boolean(query.trim());
   const showList = result && feedHasList(state, result.total_foods);
-  const activity = activitySummary(result?.activity);
-  const showWish = result && feedShowWish(state, result.action);
-
-  const openWish = () => {
-    haptic();
-    navigate("/orders", { state: { wishTitle: query.trim() } });
-  };
+  const companion = result?.companion?.trim() ?? "";
+  const emptyLine =
+    !loading && !showList
+      ? companion ||
+        (state === "no_geo"
+          ? t("feed.no_geo")
+          : state === "no_supply"
+            ? t("feed.no_supply")
+            : "")
+      : "";
 
   return (
     <div className="home-shell">
       <HomeHeader hasLocation={result?.has_location ?? false} />
-
-      <OnboardingStrip />
-
-      {(result?.context?.water_reminder || result?.context?.harmony_hint) && (
-        <section className="home-section">
-          <div className="panel panel-compact wellness-feed-hint">
-            <p>{result.context.water_reminder}</p>
-            {result.context.harmony_hint && <p>{result.context.harmony_hint}</p>}
-            {result.context.calorie_summary && (
-              <p className="hint">{result.context.calorie_summary}</p>
-            )}
-          </div>
-        </section>
-      )}
 
       <section className="home-section">
         <div className="panel panel-search">
@@ -115,27 +98,9 @@ export default function FeedPage() {
             showChips={!searched && (result?.suggestions?.length ?? 0) > 0}
             placeholder={result?.context?.search_placeholder ?? t("feed.search_placeholder")}
           />
+          {companion && <p className="feed-companion">{companion}</p>}
         </div>
       </section>
-
-      {activity && !loading && (
-        <section className="home-section">
-          <button type="button" className="panel activity-row" onClick={() => navigate("/orders")}>
-            <span className="activity-row-label">{t("feed.orders")}</span>
-            <span className="activity-row-value">{activity}</span>
-          </button>
-        </section>
-      )}
-
-      {showWish && (
-        <section className="home-section">
-          <div className="panel panel-compact wish-panel">
-            <button type="button" className="btn wish-panel-btn" onClick={openWish}>
-              {t("feed.wish")}
-            </button>
-          </div>
-        </section>
-      )}
 
       <section className="home-section home-feed">
         <header className="section-bar">
@@ -147,10 +112,8 @@ export default function FeedPage() {
           <Spinner />
         ) : showList ? (
           <AiResultGroups groups={result!.groups} onToggleFavoriteFood={toggleFavorite} />
-        ) : state === "no_geo" ? (
-          <p className="empty-line panel panel-compact">{t("feed.no_geo")}</p>
-        ) : state === "no_supply" ? (
-          <p className="empty-line panel panel-compact">{t("feed.no_supply")}</p>
+        ) : emptyLine ? (
+          <p className="empty-line panel panel-compact">{emptyLine}</p>
         ) : null}
       </section>
     </div>

@@ -43,6 +43,7 @@ async def get_or_create_user(
             language_code=tg_user.language_code,
             locale=locale,
             timezone=infer_timezone(language_code=tg_user.language_code),
+            wellness_consent=True,
         )
         session.add(user)
         await session.commit()
@@ -78,6 +79,7 @@ async def update_location(session: AsyncSession, user: User, lat: float, lon: fl
         lat=user.lat,
         lon=user.lon,
     )
+    user.onboarding_done = True
     await session.commit()
     return user
 

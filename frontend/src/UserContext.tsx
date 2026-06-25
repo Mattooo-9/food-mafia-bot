@@ -46,6 +46,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
           try {
             const updated = await api.setLocation(pos.coords.latitude, pos.coords.longitude);
             setUser(updated);
+            if (!updated.onboarding_done) {
+              const done = await api.completeOnboarding();
+              setUser(done);
+            }
             resolve(true);
           } catch {
             resolve(false);
