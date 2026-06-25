@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api, ApiError, formatPrice, formatDistance } from "../api";
 import Spinner from "../components/Spinner";
 import StatusBadge from "../components/StatusBadge";
-import { COOK_ORDER_ACTIONS, KITCHEN_TABS, ORDER_STATUS_RANK, PAYMENT_METHOD_LABELS, PAYMENT_STATUS_LABELS } from "../constants";
+import { COOK_ORDER_ACTIONS, KITCHEN_TABS, ORDER_STATUS_RANK, PAYMENT_METHOD_LABELS, PAYMENT_STATUS_LABELS, WISH_STATUS_LABELS } from "../constants";
 import { haptic, showAlert } from "../telegram";
 import type { Food, Order, OrderStatus, OrderWish } from "../types";
 
@@ -13,22 +13,28 @@ export default function MyKitchenPage() {
   const [foods, setFoods] = useState<Food[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [wishes, setWishes] = useState<OrderWish[]>([]);
+  const [myWishes, setMyWishes] = useState<OrderWish[]>([]);
   const [recipeHints, setRecipeHints] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [foodsData, ordersData, wishesData, hintsData] = await Promise.all([
+      const [foodsData, ordersData, wishesData, myWishesData, hintsData] = await Promise.all([
         api.getMyFoods(),
         api.getCookOrders(),
         api.getCookWishes(),
+        api.getCookMyWishes(),
         api.getRecipeHints(),
       ]);
       setFoods(foodsData);
       setOrders(ordersData);
       setWishes(wishesData);
+      setMyWishes(myWishesData);
       setRecipeHints(hintsData.hints);
+    } catch (e) {
+      haptic("error");
+      showAlert(e instanceof ApiError ? e.message : "Не удалось загрузить кухню");
     } finally {
       setLoading(false);
     }
@@ -70,21 +76,37 @@ export default function MyKitchenPage() {
 
   const toggleActive = async (food: Food) => {
     haptic();
-    await api.updateFood(food.id, { is_active: !food.is_active });
-    await load();
+    try {
+      await api.updateFood(food.id, { is_active: !food.is_active });
+      await load();
+    } catch (e) {
+      haptic("error");
+      showAlert(e instanceof ApiError ? e.message : "Не удалось изменить статус");
+    }
   };
 
   const removeFood = async (food: Food) => {
     if (!window.confirm(`Удалить «${food.name}»?`)) return;
-    await api.deleteFood(food.id);
-    haptic("success");
-    await load();
+    try {
+      await api.deleteFood(food.id);
+      haptic("success");
+      await load();
+    } catch (e) {
+      haptic("error");
+      showAlert(e instanceof ApiError ? e.message : "Не удалось удалить");
+    }
   };
 
   const changePortions = async (food: Food, delta: number) => {
     const next = Math.max(0, food.portions + delta);
     setFoods((prev) => prev.map((f) => (f.id === food.id ? { ...f, portions: next } : f)));
-    await api.updateFood(food.id, { portions: next });
+    try {
+      await api.updateFood(food.id, { portions: next });
+    } catch (e) {
+      haptic("error");
+      showAlert(e instanceof ApiError ? e.message : "Не удалось обновить порции");
+      await load();
+    }
   };
 
   const claimWish = async (wish: OrderWish) => {
@@ -95,6 +117,17 @@ export default function MyKitchenPage() {
     } catch (e) {
       haptic("error");
       showAlert(e instanceof ApiError ? e.message : "Не удалось взять заказ");
+    }
+  };
+
+  const completeWish = async (wish: OrderWish) => {
+    try {
+      await api.completeWish(wish.id);
+      haptic("success");
+      await load();
+    } catch (e) {
+      haptic("error");
+      showAlert(e instanceof ApiError ? e.message : "Не удалось завершить");
     }
   };
 
@@ -114,7 +147,7 @@ export default function MyKitchenPage() {
             {t.id === "orders"
               ? ` (${sortedActiveOrders.length})`
               : t.id === "wishes"
-                ? ` (${openWishes.length})`
+                ? ` (${openWishes.length + myWishes.length})`
                 : ` (${foods.length})`}
           </button>
         ))}
@@ -244,6 +277,28 @@ export default function MyKitchenPage() {
 
       {tab === "wishes" && (
         <>
+          {myWishes.length > 0 && (
+            <>
+              <h2 className="section-title">Мои в работе</h2>
+              {myWishes.map((wish) => (
+                <div className="card gloss-card" key={`mine-${wish.id}`}>
+                  <div className="row between">
+                    <strong>{wish.title}</strong>
+                    <span className="badge online">{WISH_STATUS_LABELS.CLAIMED}</span>
+                  </div>
+                  <div className="food-meta" style={{ marginTop: 6 }}>
+                    <span>× {wish.portions}</span>
+                    <span>{wish.buyer_name ?? "Покупатель"}</span>
+                  </div>
+                  {wish.details && <p className="hint">💬 {wish.details}</p>}
+                  <button className="btn small" onClick={() => void completeWish(wish)}>
+                    Выполнено
+                  </button>
+                </div>
+              ))}
+            </>
+          )}
+          <h2 className="section-title">Открытые запросы</h2>
           {openWishes.length === 0 && (
             <div className="empty">
               <span className="emoji">📋</span>

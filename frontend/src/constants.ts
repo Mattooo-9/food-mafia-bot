@@ -46,7 +46,13 @@ export const RATINGS: { label: string; value: number | null }[] = [
   { label: "Любой рейтинг", value: null },
 ];
 
-/** Статусы заказа — подписи по алфавиту ключа. */
+export const WISH_STATUS_LABELS: Record<string, string> = {
+  OPEN: "ищем повара",
+  CLAIMED: "повар взял",
+  COMPLETED: "выполнен",
+  CANCELLED: "отменён",
+};
+
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   ACCEPTED: "Принят",
   CANCELLED: "Отменён",

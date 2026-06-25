@@ -83,6 +83,16 @@ async def list_buyer_wishes(session: AsyncSession, buyer: User) -> list[OrderWis
     return list(result.scalars().all())
 
 
+async def list_cook_claimed_wishes(session: AsyncSession, cook: User) -> list[OrderWish]:
+    result = await session.execute(
+        _query()
+        .where(OrderWish.cook_id == cook.id)
+        .where(OrderWish.status == OrderWishStatus.CLAIMED.value)
+        .order_by(OrderWish.claimed_at.desc())
+    )
+    return list(result.scalars().all())
+
+
 async def list_open_wishes(
     session: AsyncSession,
     cook: User,

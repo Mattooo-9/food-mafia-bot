@@ -5,6 +5,7 @@ interface Props {
   draft: string;
   onDraftChange: (value: string) => void;
   onSearch: (value: string) => void;
+  onClear?: () => void;
   suggestions?: string[];
   placeholder?: string;
 }
@@ -13,6 +14,7 @@ export default function AiSearchHero({
   draft,
   onDraftChange,
   onSearch,
+  onClear,
   suggestions = [],
   placeholder = "Что хотите поесть?",
 }: Props) {
@@ -56,7 +58,10 @@ export default function AiSearchHero({
           <button
             type="button"
             className="search-clear"
-            onClick={() => onDraftChange("")}
+            onClick={() => {
+              onDraftChange("");
+              onClear?.();
+            }}
             aria-label="Очистить"
           >
             ✕

@@ -1,4 +1,7 @@
+import asyncio
 import logging
+import subprocess
+import sys
 from collections.abc import AsyncGenerator
 from pathlib import Path
 
@@ -112,10 +115,31 @@ async def _migrate_sqlite(conn) -> None:
     )
 
 
+async def run_migrations() -> None:
+    """Apply Alembic migrations (Postgres prod + dev parity)."""
+    root = Path(__file__).resolve().parents[2]
+
+    def _upgrade() -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [sys.executable, "-m", "alembic", "upgrade", "head"],
+            cwd=str(root),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+    proc = await asyncio.to_thread(_upgrade)
+    if proc.returncode != 0:
+        logger.warning("Alembic upgrade skipped or failed: %s", (proc.stderr or proc.stdout).strip())
+    else:
+        logger.info("Alembic migrations at head")
+
+
 async def init_db() -> None:
     from backend import models  # noqa: F401  (register all models in metadata)
 
+    await run_migrations()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         await conn.run_sync(_migrate_sqlite)
-    logger.info("Database initialized (%s)", settings.database_url)
+    logger.info("Database initialized (%s)", settings.database_url.split("@")[-1])

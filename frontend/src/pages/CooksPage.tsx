@@ -62,6 +62,7 @@ export default function CooksPage() {
         draft={draft}
         onDraftChange={setDraft}
         onSearch={runSearch}
+        onClear={() => runSearch("")}
         suggestions={result?.suggestions}
         placeholder="Повар рядом — например «выпечка»"
       />

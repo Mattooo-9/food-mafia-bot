@@ -131,9 +131,10 @@ export const api = {
     request<OrderWish>("/api/wishes", { method: "POST", body: JSON.stringify(data) }),
   getMyWishes: () => request<OrderWish[]>("/api/wishes"),
   getCookWishes: () => request<OrderWish[]>("/api/cook/wishes"),
+  getCookMyWishes: () => request<OrderWish[]>("/api/cook/wishes/mine"),
+  completeWish: (id: number) => request<OrderWish>(`/api/wishes/${id}/complete`, { method: "POST" }),
   claimWish: (id: number) => request<OrderWish>(`/api/wishes/${id}/claim`, { method: "POST" }),
   cancelWish: (id: number) => request<OrderWish>(`/api/wishes/${id}/cancel`, { method: "POST" }),
-  completeWish: (id: number) => request<OrderWish>(`/api/wishes/${id}/complete`, { method: "POST" }),
 
   getWellness: () => request<WellnessInfo>("/api/ai/wellness"),
   setWellness: (consent: boolean, diet_preference?: string | null) =>

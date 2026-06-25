@@ -32,6 +32,12 @@ async def my_wishes(user: CurrentUser, session: SessionDep) -> list[OrderWishOut
     return [serialize_order_wish(w) for w in wishes]
 
 
+@router.get("/cook/wishes/mine", response_model=list[OrderWishOut])
+async def my_claimed_wishes(cook: CurrentCook, session: SessionDep) -> list[OrderWishOut]:
+    wishes = await order_wish_service.list_cook_claimed_wishes(session, cook)
+    return [serialize_order_wish(w) for w in wishes]
+
+
 @router.get("/cook/wishes", response_model=list[OrderWishOut])
 async def open_wishes_for_cook(
     cook: CurrentCook,

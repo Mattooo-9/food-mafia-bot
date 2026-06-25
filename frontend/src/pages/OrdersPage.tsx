@@ -3,7 +3,7 @@ import { api, ApiError, formatPrice } from "../api";
 import OrderWishForm from "../components/OrderWishForm";
 import Spinner from "../components/Spinner";
 import StatusBadge from "../components/StatusBadge";
-import { ORDER_STATUS_RANK, PAYMENT_METHOD_LABELS, PAYMENT_STATUS_LABELS } from "../constants";
+import { ORDER_STATUS_RANK, PAYMENT_METHOD_LABELS, PAYMENT_STATUS_LABELS, WISH_STATUS_LABELS } from "../constants";
 import { haptic, showAlert } from "../telegram";
 import type { Order, OrderWish } from "../types";
 
@@ -86,6 +86,17 @@ export default function OrdersPage() {
     [orders],
   );
 
+  const cancelWish = async (wish: OrderWish) => {
+    try {
+      await api.cancelWish(wish.id);
+      haptic("success");
+      await load();
+    } catch (e) {
+      haptic("error");
+      showAlert(e instanceof ApiError ? e.message : "Не удалось отменить запрос");
+    }
+  };
+
   const cancel = async (order: Order) => {
     try {
       await api.cancelOrder(order.id);
@@ -114,13 +125,16 @@ export default function OrdersPage() {
               <div className="card" key={wish.id}>
                 <div className="row between">
                   <strong>{wish.title}</strong>
-                  <span className="hint">{wish.status === "OPEN" ? "ищем повара" : wish.cook_name}</span>
+                  <span className="hint">{WISH_STATUS_LABELS[wish.status] ?? wish.status}</span>
+                  {wish.cook_name && wish.status !== "OPEN" && (
+                    <span className="hint"> · {wish.cook_name}</span>
+                  )}
                 </div>
                 {wish.details && <p className="hint">💬 {wish.details}</p>}
                 {wish.status === "OPEN" && (
                   <button
                     className="btn small danger"
-                    onClick={() => void api.cancelWish(wish.id).then(load)}
+                    onClick={() => void cancelWish(wish)}
                   >
                     Отменить
                   </button>
