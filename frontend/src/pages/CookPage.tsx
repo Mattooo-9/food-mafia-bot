@@ -39,11 +39,7 @@ export default function CookPage() {
 
   if (loading) return <Spinner />;
   if (!cook) {
-    return (
-      <div className="empty">
-        <span className="emoji">😕</span>Повар не найден
-      </div>
-    );
+    return <p className="empty-line">Повар не найден</p>;
   }
 
   const name = cook.cook_name ?? cook.first_name ?? "Повар";

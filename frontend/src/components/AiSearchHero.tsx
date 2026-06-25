@@ -1,5 +1,6 @@
 import { useRef, type FormEvent } from "react";
 import { hideKeyboard, haptic } from "../telegram";
+import AppIcon from "./icons";
 
 interface Props {
   draft: string;
@@ -7,6 +8,7 @@ interface Props {
   onSearch: (value: string) => void;
   onClear?: () => void;
   suggestions?: string[];
+  showChips?: boolean;
   placeholder?: string;
 }
 
@@ -16,6 +18,7 @@ export default function AiSearchHero({
   onSearch,
   onClear,
   suggestions = [],
+  showChips = true,
   placeholder = "Что хотите поесть?",
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -35,13 +38,14 @@ export default function AiSearchHero({
     onSearch(label);
   };
 
-  const chips = (suggestions.length > 0 ? suggestions : ["Обед", "Суп", "Салат"]).slice(0, 3);
+  const chips = suggestions.slice(0, 4);
 
   return (
     <div className="ai-search-hero">
-      <div className="ai-search-glow" />
       <form className="ai-search-inner" onSubmit={submit}>
-        <span className="ai-search-spark">✨</span>
+        <span className="ai-search-icon">
+          <AppIcon name="search" size={20} />
+        </span>
         <input
           ref={inputRef}
           type="search"
@@ -72,13 +76,15 @@ export default function AiSearchHero({
           </button>
         )}
       </form>
-      <div className="ai-chips">
-        {chips.map((chip) => (
-          <button key={chip} type="button" className="ai-chip" onClick={() => pickChip(chip)}>
-            {chip}
-          </button>
-        ))}
-      </div>
+      {showChips && chips.length > 0 && (
+        <div className="ai-chips">
+          {chips.map((chip) => (
+            <button key={chip} type="button" className="ai-chip" onClick={() => pickChip(chip)}>
+              {chip}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -37,7 +37,6 @@ class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    tg_id: int
     username: str | None
     first_name: str | None
     lat: float | None
@@ -53,6 +52,16 @@ class UserOut(BaseModel):
     ton_wallet_address: str | None = None
     wellness_consent: bool = False
     diet_preference: str | None = None
+    activity_level: str = "moderate"
+    language_code: str | None = None
+    locale: str = "ru"
+    timezone: str | None = None
+    onboarding_done: bool = False
+
+
+class UserPreferencesIn(BaseModel):
+    locale: str | None = Field(default=None, max_length=8)
+    timezone: str | None = Field(default=None, max_length=64)
 
 
 class UserInsightsOut(BaseModel):
@@ -233,8 +242,31 @@ class AssistantTopPickOut(BaseModel):
     label: str
 
 
+class FeedActivityOut(BaseModel):
+    active_orders: int = 0
+    open_wishes: int = 0
+    claimed_wishes: int = 0
+
+
+class FeedContextOut(BaseModel):
+    meal: str
+    section_label: str
+    search_placeholder: str
+    season: str = ""
+    is_weekend: bool = False
+    calorie_summary: str = ""
+    meal_budget_label: str = ""
+    water_reminder: str = ""
+    harmony_hint: str = ""
+    rainbow_progress: int = 0
+
+
 class AssistantSearchOut(BaseModel):
-    message: str
+    state: str = "browse"
+    has_location: bool = False
+    activity: FeedActivityOut | None = None
+    context: FeedContextOut | None = None
+    message: str = ""
     companion: str = ""
     suggestions: list[str] = []
     action: str | None = None
@@ -371,13 +403,31 @@ class OrderWishOut(BaseModel):
 class WellnessIn(BaseModel):
     consent: bool | None = None
     diet_preference: str | None = Field(default=None, max_length=256)
+    activity_level: str | None = Field(default=None, max_length=16)
 
 
 class WellnessOut(BaseModel):
     wellness_consent: bool
     diet_preference: str | None = None
+    activity_level: str = "moderate"
     message: str = ""
     balance_hint: str = ""
+    suggestion: str = ""
+    calorie_target: int = 0
+    calories_today: int = 0
+    calories_left: int = 0
+    meal_budget: int = 0
+    protein_g: int = 0
+    carbs_g: int = 0
+    fat_g: int = 0
+    water_glasses: int = 0
+    water_target: int = 8
+    water_reminder: str = ""
+    meal_schedule: str = ""
+    harmony_hint: str = ""
+    rainbow_progress: int = 0
+    rainbow_missing: list[str] = []
+    rainbow: dict[str, int] = {}
 
 
 class RecipeHintsOut(BaseModel):

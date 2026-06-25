@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { api } from "./api";
+import { setLocale } from "./i18n";
 import type { User } from "./types";
 
 interface UserContextValue {
@@ -27,6 +28,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     try {
       const me = await api.getMe();
+      setLocale(me.locale);
       setUser(me);
       setError(null);
     } catch (e) {

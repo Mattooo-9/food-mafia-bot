@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
-import AiMessage from "../components/AiMessage";
 import AiResultGroups from "../components/AiResultGroups";
 import AiSearchHero from "../components/AiSearchHero";
 import LocationBar from "../components/LocationBar";
@@ -13,7 +12,6 @@ export default function CooksPage() {
   const [query, setQuery] = useState("");
   const [result, setResult] = useState<AssistantSearch | null>(null);
   const [loading, setLoading] = useState(true);
-  const [searched, setSearched] = useState(false);
 
   const load = useCallback(async (q: string) => {
     setLoading(true);
@@ -31,7 +29,6 @@ export default function CooksPage() {
   const runSearch = (q: string) => {
     setDraft(q);
     setQuery(q);
-    setSearched(Boolean(q));
   };
 
   const toggleFavorite = async (cook: Cook) => {
@@ -52,7 +49,8 @@ export default function CooksPage() {
     });
   };
 
-  const empty = searched && !loading && result && result.total_cooks === 0;
+  const empty = Boolean(query.trim()) && !loading && result && result.total_cooks === 0;
+  const hasCooks = !loading && (result?.total_cooks ?? 0) > 0;
 
   return (
     <div className="page">
@@ -64,22 +62,23 @@ export default function CooksPage() {
         onSearch={runSearch}
         onClear={() => runSearch("")}
         suggestions={result?.suggestions}
-        placeholder="Повар рядом — например «выпечка»"
+        showChips={(result?.suggestions?.length ?? 0) > 0}
+        placeholder={result?.context?.search_placeholder ?? "Категория или имя"}
       />
-      <LocationBar />
+      <LocationBar active={result?.has_location} />
 
-      {result && <AiMessage result={result} wishQuery={query} />}
+      <header className="section-bar">
+        <h2>{query.trim() || "Рядом"}</h2>
+        {hasCooks && <span className="section-meta">{result!.total_cooks}</span>}
+      </header>
 
       {loading ? (
         <Spinner />
       ) : empty ? (
-        <div className="empty">
-          <span className="emoji">👨‍🍳</span>
-          Поваров не нашёл — измените запрос или укажите геолокацию
-        </div>
-      ) : (
-        <AiResultGroups groups={result?.groups ?? []} onToggleFavoriteCook={toggleFavorite} />
-      )}
+        <p className="empty-line">Не найдено</p>
+      ) : hasCooks ? (
+        <AiResultGroups groups={result!.groups} onToggleFavoriteCook={toggleFavorite} />
+      ) : null}
     </div>
   );
 }

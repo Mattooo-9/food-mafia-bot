@@ -15,7 +15,7 @@ export default function AiMarketCard() {
 
   return (
     <div className="card ai-card ai-card-simple">
-      <strong className="ai-title">✨ ИИ подобрал для вас</strong>
+      <strong className="ai-title">Рядом с вами</strong>
       <div className="ai-recs" style={{ marginTop: 10 }}>
         {recs.map((r) => (
           <button

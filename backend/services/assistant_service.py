@@ -1,4 +1,4 @@
-"""Умный поиск: ИИ сам решает, отвечает коротко и конкретно."""
+"""Поиск и лента: состояние экрана и обучение на результатах."""
 
 from __future__ import annotations
 
@@ -9,18 +9,45 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.models import User
 from backend.services import favorite_service, food_service, memory_service
 from backend.services.food_service import FoodWithDistance
-from backend.services.nutrition_service import balance_hint_for_intent, food_matches_diet, wellness_tip
+from backend.services.insights_service import activity_counts
 from backend.utils.categories import SEP, food_group, normalize_category
 from backend.utils.search_intent import parse_search_intent
 
+FeedState = str  # browse | search_results | search_empty | no_supply | no_geo
 
-def _score_food_fast(item: FoodWithDistance, prefer_groups: list[str]) -> int:
+
+def _score_food_fast(
+    item: FoodWithDistance,
+    prefer_groups: list[str],
+    weak_groups: set[str] | None = None,
+    meal_ctx=None,
+    viewer: User | None = None,
+    wellness_day=None,
+) -> int:
     food = item.food
     cook = food.cook
     base = 42 + min(28, food.orders_count * 2) + int(cook.rating_avg * 8)
     group = food_group(food.category)
     if group in prefer_groups:
         base += 14 - prefer_groups.index(group) * 4
+    if weak_groups and group in weak_groups:
+        base -= 14
+    if meal_ctx is not None:
+        from backend.services.meal_context import score_adjustments
+
+        base += score_adjustments(
+            ctx=meal_ctx,
+            food_group_name=group,
+            food_category=food.category,
+            cooking_minutes=food.cooking_time_minutes,
+            cook_online=bool(cook.is_online),
+        )
+    if viewer and viewer.wellness_consent and meal_ctx is not None and wellness_day is not None:
+        from backend.services.nutrition_service import wellness_score_for_food
+
+        base += wellness_score_for_food(
+            food, user=viewer, day=wellness_day, meal_ctx=meal_ctx,
+        )
     if item.distance_m is not None:
         if item.distance_m < 800:
             base += 16
@@ -28,27 +55,7 @@ def _score_food_fast(item: FoodWithDistance, prefer_groups: list[str]) -> int:
             base += 10
         elif item.distance_m < 5000:
             base += 4
-    return min(100, base)
-
-
-def _plural(n: int, one: str, few: str, many: str) -> str:
-    n = abs(n) % 100
-    n1 = n % 10
-    if 11 <= n <= 19:
-        return many
-    if n1 == 1:
-        return one
-    if 2 <= n1 <= 4:
-        return few
-    return many
-
-
-def _dist_suffix(m: float | None) -> str:
-    if m is None:
-        return ""
-    if m < 1000:
-        return f", {int(m)} м"
-    return f", {m / 1000:.1f} км"
+    return min(100, max(0, base))
 
 
 def _pick_top(
@@ -60,60 +67,21 @@ def _pick_top(
     return min(items, key=lambda i: (-scores.get(i.food.id, 0), i.distance_m or float("inf")))
 
 
-def _top_pick_label(item: FoodWithDistance) -> str:
-    f = item.food
-    cook = f.cook.cook_name or f.cook.first_name or "повар"
-    return f"{f.name} · {int(f.price)}⭐{_dist_suffix(item.distance_m)} · {cook}"
-
-
-def _build_message(
-    intent: dict,
+def _feed_state(
+    *,
+    query: str,
+    has_location: bool,
     food_count: int,
     cook_count: int,
-    *,
-    top: FoodWithDistance | None = None,
-    wellness: str = "",
-    companion: str = "",
-) -> str:
-    q = intent["query"]
-    cat = intent["category_hint"]
-    label = cat["label"] if cat.get("group") != "Разное" else ""
-    sort_txt = (intent.get("sort_labels") or [None])[0]
-    top_line = f" → {_top_pick_label(top)}" if top else ""
-
-    if not q.strip():
-        if food_count:
-            base = f"Подобрал {food_count} {_plural(food_count, 'вариант', 'варианта', 'вариантов')}"
-            if sort_txt:
-                base += f" · {sort_txt}"
-            if companion:
-                base = f"{companion}. {base}"
-            return (base + top_line + ".")[:280]
-        return (companion + ". " if companion else "") + (wellness or "Напишите, что хотите — подберу сам.")[:280]
-
-    subject = label or f"«{q}»"
+) -> FeedState:
     total = food_count + cook_count
-
+    if query.strip():
+        return "search_empty" if total == 0 else "search_results"
+    if not has_location and total == 0:
+        return "no_geo"
     if total == 0:
-        tail = " Опубликуйте запрос — повара приготовят."
-        return f"{subject} рядом нет.{tail}"[:280]
-
-    if food_count and not cook_count:
-        core = f"{subject}: {food_count} {_plural(food_count, 'блюдо', 'блюда', 'блюд')}"
-    elif cook_count and not food_count:
-        core = f"{subject}: {cook_count} {_plural(cook_count, 'повар', 'повара', 'поваров')}"
-    else:
-        core = f"{subject}: {food_count} блюд, {cook_count} поваров"
-
-    extras: list[str] = []
-    if intent.get("price_max"):
-        extras.append(f"до {int(intent['price_max'])}⭐")
-    if sort_txt:
-        extras.append(sort_txt)
-    if extras:
-        core += f" ({', '.join(extras)})"
-
-    return (core + top_line + ".")[:280]
+        return "no_supply"
+    return "browse"
 
 
 def _group_foods(
@@ -134,18 +102,18 @@ def _group_foods(
         top_item = next((i for i in items if i.food.id == top_id), None)
         if top_item:
             groups.append({
-                "title": "Рекомендую",
-                "subtitle": "лучший вариант",
+                "title": "Выбор",
+                "subtitle": None,
                 "kind": "foods",
                 "items": [top_item],
             })
 
     if has_location and any(i.distance_m is not None for i in rest):
         bands: list[tuple[str, str | None, float, float]] = [
-            ("Совсем рядом", "до 800 м", 0, 800),
-            ("Рядом", "до 2 км", 800, 2000),
-            ("В районе", "до 5 км", 2000, 5000),
-            ("Подальше", None, 5000, float("inf")),
+            ("До 800 м", None, 0, 800),
+            ("До 2 км", None, 800, 2000),
+            ("До 5 км", None, 2000, 5000),
+            ("Дальше", None, 5000, float("inf")),
         ]
         for title, sub, lo, hi in bands:
             bucket = [i for i in rest if i.distance_m is not None and lo <= i.distance_m < hi]
@@ -155,7 +123,7 @@ def _group_foods(
         unknown = [i for i in rest if i.distance_m is None]
         if unknown:
             unknown.sort(key=lambda i: -scores.get(i.food.id, 0))
-            groups.append({"title": "Без координат", "subtitle": None, "kind": "foods", "items": unknown})
+            groups.append({"title": "Без расстояния", "subtitle": None, "kind": "foods", "items": unknown})
         return groups
 
     if cat_hint and cat_hint.get("group") != "Разное":
@@ -196,9 +164,9 @@ def _group_cooks(cooks: list[tuple[User, float | None]]) -> list[dict]:
     if not cooks:
         return []
     bands: list[tuple[str, str | None, float, float]] = [
-        ("Повара рядом", "до 1 км", 0, 1000),
-        ("Недалеко", "до 3 км", 1000, 3000),
-        ("В городе", None, 3000, float("inf")),
+        ("До 1 км", None, 0, 1000),
+        ("До 3 км", None, 1000, 3000),
+        ("Дальше", None, 3000, float("inf")),
     ]
     groups: list[dict] = []
     for title, sub, lo, hi in bands:
@@ -223,11 +191,19 @@ async def assistant_search(
     intent = parse_search_intent(query, has_location=has_location)
     intent = await memory_service.enrich_intent(session, viewer, intent)
 
+    weak = set(intent.get("weak_groups") or [])
+    meal_ctx = intent.get("meal_context")
     prefer_groups = await memory_service.preferred_groups(session, viewer.id)
-    if intent.get("prefer_groups_memory"):
-        prefer_groups = intent["prefer_groups_memory"] + [g for g in prefer_groups if g not in intent["prefer_groups_memory"]]
+    wellness_day = None
+    if viewer.wellness_consent:
+        from backend.services.wellness_tracker import get_day_nutrition
 
-    companion = await memory_service.companion_line(session, viewer)
+        _, wellness_day = await get_day_nutrition(session, viewer)
+    if intent.get("prefer_groups_memory"):
+        prefer_groups = intent["prefer_groups_memory"] + [
+            g for g in prefer_groups if g not in intent["prefer_groups_memory"]
+        ]
+
     suggestions = await memory_service.quick_suggestions(session, viewer)
 
     include_foods = scope in ("feed", "all")
@@ -290,6 +266,8 @@ async def assistant_search(
                     seen.add(food.id)
 
     if viewer.diet_preference:
+        from backend.services.nutrition_service import food_matches_diet
+
         food_items = [
             i
             for i in food_items
@@ -306,7 +284,12 @@ async def assistant_search(
             limit=30,
         )
 
-    scores = {item.food.id: _score_food_fast(item, prefer_groups) for item in food_items}
+    scores = {
+        item.food.id: _score_food_fast(
+            item, prefer_groups, weak, meal_ctx, viewer, wellness_day,
+        )
+        for item in food_items
+    }
 
     if intent["feed"] == "cheap":
         food_items.sort(key=lambda i: (i.food.price, i.distance_m or float("inf")))
@@ -333,24 +316,15 @@ async def assistant_search(
     fav_foods = await favorite_service.get_favorite_food_ids(session, viewer)
     fav_cooks = await favorite_service.get_favorite_cook_ids(session, viewer)
 
-    tip = await wellness_tip(session, viewer)
-    wellness_note = tip.get("message", "")
-    if query.strip() and intent.get("strict_category"):
-        hint = balance_hint_for_intent(intent["category_hint"])
-        if hint and len(hint) < 70:
-            wellness_note = hint
-
-    msg = _build_message(
-        intent,
-        len(food_items),
-        len(cook_items),
-        top=top_item if query.strip() or top_item else top_item,
-        wellness=wellness_note if not query.strip() else "",
-        companion=companion if not query.strip() else "",
+    state = _feed_state(
+        query=query,
+        has_location=has_location,
+        food_count=len(food_items),
+        cook_count=len(cook_items),
     )
 
     action: str | None = None
-    if query.strip() and len(food_items) + len(cook_items) == 0:
+    if state == "search_empty":
         action = "create_wish"
 
     if query.strip():
@@ -364,14 +338,30 @@ async def assistant_search(
         )
         await session.commit()
 
+    activity = await activity_counts(session, viewer) if scope == "feed" else None
+
+    from backend.services.meal_context import context_payload
+
+    ctx_out = context_payload(meal_ctx) if meal_ctx else None
+    if viewer.wellness_consent and scope == "feed":
+        from backend.services.nutrition_service import feed_wellness_context
+
+        wellness_ctx = await feed_wellness_context(session, viewer)
+        if ctx_out and wellness_ctx:
+            ctx_out = {**ctx_out, **wellness_ctx}
+
     return {
-        "message": msg,
-        "companion": companion[:120],
+        "state": state,
+        "has_location": has_location,
+        "activity": activity,
+        "context": ctx_out,
+        "message": "",
+        "companion": "",
         "suggestions": suggestions,
         "action": action,
         "top_pick": {
             "food_id": top_item.food.id,
-            "label": _top_pick_label(top_item),
+            "label": top_item.food.name,
         } if top_item else None,
         "intent": {
             "category": intent["category_hint"]["label"],

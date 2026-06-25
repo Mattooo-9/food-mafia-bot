@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { formatDistance } from "../api";
 import type { Cook } from "../types";
+import AppIcon from "./icons";
 import Stars from "./Stars";
 
 interface Props {
@@ -16,7 +17,9 @@ export default function CookCard({ cook, onToggleFavorite }: Props) {
       {cook.cook_photo ? (
         <img className="cook-avatar" src={cook.cook_photo} alt={name} />
       ) : (
-        <div className="cook-avatar">👨‍🍳</div>
+        <div className="cook-avatar food-photo-fallback">
+          <AppIcon name="chef" size={32} />
+        </div>
       )}
       <div className="food-info">
         <div className="row between">
@@ -24,12 +27,13 @@ export default function CookCard({ cook, onToggleFavorite }: Props) {
           {onToggleFavorite && (
             <button
               className="icon-btn"
+              aria-label={cook.is_favorite ? "Убрать из избранного" : "В избранное"}
               onClick={(e) => {
                 e.stopPropagation();
                 onToggleFavorite(cook);
               }}
             >
-              {cook.is_favorite ? "❤️" : "🤍"}
+              <AppIcon name={cook.is_favorite ? "heart" : "heartOutline"} size={20} />
             </button>
           )}
         </div>
@@ -38,10 +42,15 @@ export default function CookCard({ cook, onToggleFavorite }: Props) {
         </div>
         <div className="food-meta">
           <span className={`badge ${cook.is_online ? "online" : "offline"}`}>
-            {cook.is_online ? "● онлайн" : "○ оффлайн"}
+            {cook.is_online ? "онлайн" : "оффлайн"}
           </span>
-          {cook.distance_m != null && <span>📍 {formatDistance(cook.distance_m)}</span>}
-          {cook.is_subscribed && <span className="badge">🔔 подписка</span>}
+          {cook.distance_m != null && (
+            <span className="meta-icon">
+              <AppIcon name="distance" size={14} />
+              {formatDistance(cook.distance_m)}
+            </span>
+          )}
+          {cook.is_subscribed && <span className="badge">подписка</span>}
         </div>
       </div>
     </div>

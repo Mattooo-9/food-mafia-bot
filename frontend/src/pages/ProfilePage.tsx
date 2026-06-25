@@ -9,6 +9,7 @@ import LocationBar from "../components/LocationBar";
 import PaymentWallet from "../components/PaymentWallet";
 import Spinner from "../components/Spinner";
 import Stars from "../components/Stars";
+import { getLocale, t } from "../i18n";
 import { haptic, showAlert } from "../telegram";
 import type { Cook, Order } from "../types";
 import { useUser } from "../UserContext";
@@ -24,6 +25,7 @@ export default function ProfilePage() {
   const [cookDescription, setCookDescription] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+  const [locale, setLocaleState] = useState(getLocale());
 
   useEffect(() => {
     void Promise.all([api.getSubscriptions(), api.getMyOrders(), api.getSearchHistory()]).then(
@@ -39,8 +41,21 @@ export default function ProfilePage() {
     if (user) {
       setCookName(user.cook_name ?? "");
       setCookDescription(user.cook_description ?? "");
+      setLocaleState((user.locale as "ru" | "en") || "ru");
     }
   }, [user]);
+
+  const changeLocale = async (next: "ru" | "en") => {
+    haptic();
+    try {
+      await api.setPreferences({ locale: next });
+      await refresh();
+      setLocaleState(next);
+    } catch (e) {
+      haptic("error");
+      showAlert(e instanceof ApiError ? e.message : "Не удалось сменить язык");
+    }
+  };
 
   if (!user) return <Spinner />;
 
@@ -95,7 +110,27 @@ export default function ProfilePage() {
 
   return (
     <div className="page">
-      <h1 className="page-title">Профиль</h1>
+      <h1 className="page-title">{t("profile.title")}</h1>
+
+      <div className="card">
+        <strong>{t("profile.language")}</strong>
+        <div className="btn-row" style={{ marginTop: 8 }}>
+          <button
+            type="button"
+            className={`btn small ${locale === "ru" ? "" : "secondary"}`}
+            onClick={() => void changeLocale("ru")}
+          >
+            {t("profile.lang.ru")}
+          </button>
+          <button
+            type="button"
+            className={`btn small ${locale === "en" ? "" : "secondary"}`}
+            onClick={() => void changeLocale("en")}
+          >
+            {t("profile.lang.en")}
+          </button>
+        </div>
+      </div>
 
       <LocationBar />
 

@@ -1,3 +1,4 @@
+import type { IconName } from "./components/icons";
 import type { FeedType, OrderStatus, PaymentMethod, PaymentStatus } from "./types";
 
 /** Способы оплаты — по алфавиту (ru). */
@@ -96,13 +97,19 @@ export const KITCHEN_TABS = [
 ];
 
 /** Вкладки — лента первая (главная). */
-export const TABS = [
-  { cookOnly: false, end: true, icon: "🍲", label: "Лента", to: "/" },
-  { cookOnly: false, end: false, icon: "👨‍🍳", label: "Повара", to: "/cooks" },
-  { cookOnly: false, end: false, icon: "📦", label: "Заказы", to: "/orders" },
-  { cookOnly: false, end: false, icon: "❤️", label: "Избранное", to: "/favorites" },
-  { cookOnly: true, end: false, icon: "🧑‍🍳", label: "Кухня", to: "/my-kitchen" },
-  { cookOnly: false, end: false, icon: "👤", label: "Профиль", to: "/profile" },
+export const TABS: {
+  cookOnly: boolean;
+  end: boolean;
+  icon: IconName;
+  label: string;
+  to: string;
+}[] = [
+  { cookOnly: false, end: true, icon: "feed", label: "Лента", to: "/" },
+  { cookOnly: false, end: false, icon: "cooks", label: "Повара", to: "/cooks" },
+  { cookOnly: false, end: false, icon: "orders", label: "Заказы", to: "/orders" },
+  { cookOnly: false, end: false, icon: "favorites", label: "Избранное", to: "/favorites" },
+  { cookOnly: true, end: false, icon: "kitchen", label: "Кухня", to: "/my-kitchen" },
+  { cookOnly: false, end: false, icon: "profile", label: "Профиль", to: "/profile" },
 ];
 
 export function sortRu(values: string[]): string[] {

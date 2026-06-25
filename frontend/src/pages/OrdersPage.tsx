@@ -146,7 +146,7 @@ export default function OrdersPage() {
 
       {orders.length === 0 ? (
         <div className="empty">
-          <span className="emoji">🛒</span>Вы ещё ничего не заказывали
+          <p className="empty-line">Вы ещё ничего не заказывали</p>
         </div>
       ) : (
         sortedOrders.map((order) => (

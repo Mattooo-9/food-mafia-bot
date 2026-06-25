@@ -59,10 +59,7 @@ export default function FoodPage() {
   if (loading) return <Spinner />;
   if (!food) {
     return (
-      <div className="empty">
-        <span className="emoji">😕</span>
-        Блюдо не найдено
-      </div>
+      <p className="empty-line">Блюдо не найдено</p>
     );
   }
 

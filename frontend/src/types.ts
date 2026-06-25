@@ -14,7 +14,6 @@ export interface UserInsights {
 
 export interface User {
   id: number;
-  tg_id: number;
   username: string | null;
   first_name: string | null;
   lat: number | null;
@@ -30,6 +29,11 @@ export interface User {
   ton_wallet_address: string | null;
   wellness_consent: boolean;
   diet_preference: string | null;
+  activity_level: string;
+  language_code: string | null;
+  locale: string;
+  timezone: string | null;
+  onboarding_done: boolean;
 }
 
 export interface ReferralInfo {
@@ -59,7 +63,37 @@ export interface AssistantGroup {
   cooks: Cook[];
 }
 
+export type FeedState =
+  | "browse"
+  | "search_results"
+  | "search_empty"
+  | "no_supply"
+  | "no_geo";
+
+export interface FeedActivity {
+  active_orders: number;
+  open_wishes: number;
+  claimed_wishes: number;
+}
+
+export interface FeedContext {
+  meal: string;
+  section_label: string;
+  search_placeholder: string;
+  season?: string;
+  is_weekend?: boolean;
+  calorie_summary?: string;
+  meal_budget_label?: string;
+  water_reminder?: string;
+  harmony_hint?: string;
+  rainbow_progress?: number;
+}
+
 export interface AssistantSearch {
+  state: FeedState;
+  has_location: boolean;
+  activity: FeedActivity | null;
+  context: FeedContext | null;
   message: string;
   companion: string;
   suggestions: string[];
@@ -236,8 +270,25 @@ export interface OrderWish {
 export interface WellnessInfo {
   wellness_consent: boolean;
   diet_preference: string | null;
+  activity_level: string;
   message: string;
   balance_hint: string;
+  suggestion?: string;
+  calorie_target: number;
+  calories_today: number;
+  calories_left: number;
+  meal_budget: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  water_glasses: number;
+  water_target: number;
+  water_reminder: string;
+  meal_schedule: string;
+  harmony_hint: string;
+  rainbow_progress: number;
+  rainbow_missing: string[];
+  rainbow: Record<string, number>;
 }
 
 export interface Order {

@@ -105,6 +105,9 @@ class Settings(BaseSettings):
 
     log_level: str = "INFO"
 
+    # Прокси Bot API при блокировках (например https://api.telegram.org или свой MTProxy gateway).
+    telegram_api_base: str = Field(default="", validation_alias="TELEGRAM_API_BASE")
+
 
 settings = Settings()
 settings.upload_dir.mkdir(parents=True, exist_ok=True)

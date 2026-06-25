@@ -156,10 +156,7 @@ export default function MyKitchenPage() {
       {tab === "orders" && (
         <>
           {sortedActiveOrders.length === 0 && (
-            <div className="empty">
-              <span className="emoji">📭</span>
-              Активных заказов нет
-            </div>
+            <p className="empty-line">Активных заказов нет</p>
           )}
           {sortedActiveOrders.map((order) => (
             <div className="card" key={order.id}>
@@ -233,10 +230,7 @@ export default function MyKitchenPage() {
           </button>
           <div style={{ height: 10 }} />
           {foods.length === 0 && (
-            <div className="empty">
-              <span className="emoji">🍳</span>
-              Добавьте своё первое блюдо
-            </div>
+            <p className="empty-line">Добавьте своё первое блюдо</p>
           )}
           {foods.map((food) => (
             <div className="card" key={food.id}>
@@ -300,10 +294,7 @@ export default function MyKitchenPage() {
           )}
           <h2 className="section-title">Открытые запросы</h2>
           {openWishes.length === 0 && (
-            <div className="empty">
-              <span className="emoji">📋</span>
-              Пока нет открытых запросов от покупателей
-            </div>
+            <p className="empty-line">Пока нет открытых запросов от покупателей</p>
           )}
           {openWishes.map((wish) => (
             <div className="card" key={wish.id}>

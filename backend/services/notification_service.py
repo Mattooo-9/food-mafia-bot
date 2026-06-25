@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.bot_instance import bot
 from backend.models import Food, Order, OrderStatus, Subscription, User
 from backend.models.enums import PAYMENT_METHOD_LABELS
+from backend.utils.privacy import anonymize_user, buyer_display
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +95,7 @@ def _order_summary(order: Order, food: Food) -> str:
 
 
 async def notify_cook_new_order(order: Order, food: Food, cook: User, buyer: User) -> None:
-    buyer_name = buyer.first_name or buyer.username or f"id{buyer.tg_id}"
+    buyer_name = buyer_display(buyer, None)
     text = (
         f"🔔 <b>Новый заказ!</b>\n\n{_order_summary(order, food)}\n"
         f"👤 Покупатель: {buyer_name}"
@@ -148,7 +149,7 @@ async def notify_referral_rewards(
     )
     if referrer is None:
         return
-    name = buyer.first_name or buyer.username or "друг"
+    name = anonymize_user(buyer)
     await _send(
         referrer.tg_id,
         f"🎁 <b>+{_stars(referrer_bonus)}</b> на ваш баланс!\n"
@@ -180,7 +181,7 @@ async def notify_cooks_new_wish(session: AsyncSession, wish) -> None:
     )
     cooks = list(result.scalars().all())
     buyer = wish.buyer
-    buyer_name = buyer.first_name or buyer.username or "Покупатель"
+    buyer_name = buyer_display(buyer, None)
     budget = f"до {_stars(wish.budget_max)}" if wish.budget_max else "по договорённости"
     text = (
         f"📋 <b>Новый запрос от покупателя!</b>\n\n"

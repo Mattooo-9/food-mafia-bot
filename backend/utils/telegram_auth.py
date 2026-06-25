@@ -15,6 +15,7 @@ class TelegramUser:
     tg_id: int
     username: str | None
     first_name: str | None
+    language_code: str | None = None
 
 
 def parse_start_param(init_data: str) -> str | None:
@@ -67,4 +68,5 @@ def validate_init_data(init_data: str, bot_token: str, max_age_seconds: int) -> 
         tg_id=tg_id,
         username=user.get("username"),
         first_name=user.get("first_name"),
+        language_code=user.get("language_code"),
     )

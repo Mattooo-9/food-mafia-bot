@@ -8,6 +8,8 @@ from backend.api.schemas import (
     AssistantSearchOut,
     AssistantTopPickOut,
     CategorizeOut,
+    FeedActivityOut,
+    FeedContextOut,
     FoodEvaluationOut,
     MarketInsightOut,
     MarketOverviewOut,
@@ -70,10 +72,16 @@ async def ai_search(
             q.strip(),
             scope=scope,
             results_count=total,
-            summary=data["message"],
+            summary=state_label(data["state"]),
         )
+    activity = data.get("activity")
+    ctx = data.get("context")
     return AssistantSearchOut(
-        message=data["message"],
+        state=data["state"],
+        has_location=data.get("has_location", False),
+        activity=FeedActivityOut(**activity) if activity else None,
+        context=FeedContextOut(**ctx) if ctx else None,
+        message=data.get("message", ""),
         companion=data.get("companion", ""),
         suggestions=data.get("suggestions", []),
         action=data.get("action"),
@@ -88,6 +96,16 @@ async def ai_search(
         total_foods=data["total_foods"],
         total_cooks=data["total_cooks"],
     )
+
+
+def state_label(state: str) -> str:
+    return {
+        "browse": "лента",
+        "search_results": "найдено",
+        "search_empty": "пусто",
+        "no_supply": "нет предложений",
+        "no_geo": "без гео",
+    }.get(state, state)
 
 
 @router.get("/ai/market", response_model=MarketOverviewOut)

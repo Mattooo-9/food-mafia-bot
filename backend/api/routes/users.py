@@ -1,7 +1,19 @@
 from fastapi import APIRouter, HTTPException
 
 from backend.api.deps import CurrentUser, SessionDep
-from backend.api.schemas import CategoriesOut, CookProfileIn, CurrencyOut, LocationIn, OkOut, ReferralOut, SearchHistoryOut, UserInsightsOut, UserOut, WalletIn
+from backend.api.schemas import (
+    CategoriesOut,
+    CookProfileIn,
+    CurrencyOut,
+    LocationIn,
+    OkOut,
+    ReferralOut,
+    SearchHistoryOut,
+    UserInsightsOut,
+    UserOut,
+    UserPreferencesIn,
+    WalletIn,
+)
 from backend.config import settings
 from backend.services import insights_service, referral_service, search_history_service, user_service
 from backend.services.user_service import WalletError
@@ -23,6 +35,22 @@ async def get_me(user: CurrentUser) -> UserOut:
 @router.post("/me/location", response_model=UserOut)
 async def set_location(payload: LocationIn, user: CurrentUser, session: SessionDep) -> UserOut:
     updated = await user_service.update_location(session, user, payload.lat, payload.lon)
+    return UserOut.model_validate(updated)
+
+
+@router.post("/me/preferences", response_model=UserOut)
+async def set_preferences(
+    payload: UserPreferencesIn, user: CurrentUser, session: SessionDep
+) -> UserOut:
+    updated = await user_service.update_preferences(
+        session, user, locale=payload.locale, timezone=payload.timezone
+    )
+    return UserOut.model_validate(updated)
+
+
+@router.post("/me/onboarding", response_model=UserOut)
+async def finish_onboarding(user: CurrentUser, session: SessionDep) -> UserOut:
+    updated = await user_service.complete_onboarding(session, user)
     return UserOut.model_validate(updated)
 
 

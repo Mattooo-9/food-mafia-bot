@@ -12,6 +12,7 @@ import MyKitchenPage from "./pages/MyKitchenPage";
 import OrdersPage from "./pages/OrdersPage";
 import ProfilePage from "./pages/ProfilePage";
 import { UserProvider, useUser } from "./UserContext";
+import { t } from "./i18n";
 
 function CookOnly({ children }: { children: ReactNode }) {
   const { user } = useUser();
@@ -25,7 +26,6 @@ function AppInner() {
   if (loading) {
     return (
       <div className="app-loading">
-        <span className="logo">🍲</span>
         <Spinner />
       </div>
     );
@@ -34,10 +34,9 @@ function AppInner() {
   if (error || !user) {
     return (
       <div className="error-screen">
-        <span className="emoji">🔒</span>
         <h1>Еда Рядом</h1>
-        <p>{error ?? "Откройте приложение через Telegram"}</p>
-        <p className="hint">Запустите бота и нажмите «Открыть Еда Рядом».</p>
+        <p>{error ?? t("app.error")}</p>
+        <p className="hint">{t("app.hint")}</p>
       </div>
     );
   }

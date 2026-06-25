@@ -169,7 +169,13 @@ async def change_status(
             buyer = await session.get(User, order.buyer_id)
             if buyer is not None:
                 await memory_service.observe_order_delivered(
-                    session, buyer, total_price=order.total_price, category=food.category,
+                    session,
+                    buyer,
+                    total_price=order.total_price,
+                    category=food.category,
+                    food_name=food.name,
+                    ingredients=food.ingredients or "",
+                    portions=order.quantity,
                 )
 
     await session.commit()

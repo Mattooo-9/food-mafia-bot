@@ -25,6 +25,7 @@ class UserMemory(Base):
     avg_order_stars: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     prefers_cheap: Mapped[bool] = mapped_column(nullable=False, default=False)
     companion_note: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    wellness_state: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )

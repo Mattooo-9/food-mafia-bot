@@ -1,21 +1,33 @@
-"""Гармоничные рекомендации — работают всегда; история учитывается только с согласия."""
+"""Гармоничные рекомендации: калории, радуга, вода, режим приёмов пищи."""
 
 from __future__ import annotations
-
-from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models import User
 from backend.services import ai_analyst_service, food_service
+from backend.services.meal_context import build_meal_context, hour_bucket, local_now
+from backend.services.nutrient_engine import (
+    RAINBOW_ORDER,
+    daily_calorie_target,
+    estimate_food_nutrients,
+    harmony_hint,
+    meal_calorie_budget,
+    meal_schedule_hint,
+    missing_rainbow_colors,
+    rainbow_progress,
+    score_food_for_wellness,
+    water_reminder_text,
+)
+from backend.services.wellness_tracker import get_day_nutrition
 from backend.utils.categories import SEP, categorize_text, food_group, normalize_category
 
 _BALANCE_HINTS: dict[str, str] = {
-    "Горячие блюда": "К горячему хорошо добавить салат или тёплый напиток.",
-    "Выпечка и сладкое": "Сладкое лучше в умеренной порции — дополните чаем или супом.",
-    "Закуски и салаты": "Салату к месту сытное горячее или цельный хлеб.",
-    "На каждый день": "Чередуйте лёгкие и сытные приёмы пищи — так проще держать баланс.",
+    "Горячие блюда": "К горячему — салат или тёплый напиток.",
+    "Выпечка и сладкое": "Сладкое в умеренной порции; дополните супом или чаем.",
+    "Закуски и салаты": "К салату — сытное горячее или цельный хлеб.",
+    "На каждый день": "Чередуйте лёгкие и сытные приёмы — баланс энергии.",
 }
 
 _LIGHT_GROUPS = {"Закуски и салаты", "На каждый день"}
@@ -44,27 +56,19 @@ _RECIPE_IDEAS: dict[str, list[str]] = {
     ],
 }
 
-
-def _hour_bucket() -> str:
-    h = datetime.now(timezone.utc).hour
-    if 5 <= h < 11:
-        return "morning"
-    if 11 <= h < 16:
-        return "lunch"
-    if 16 <= h < 21:
-        return "evening"
-    return "night"
+_ACTIVITY_LABELS = {
+    "sedentary": "мало движения",
+    "light": "лёгкая активность",
+    "moderate": "умеренная",
+    "active": "активный спорт",
+    "intense": "интенсивные тренировки",
+}
 
 
-def _base_tip_for_hour() -> tuple[str, str]:
-    bucket = _hour_bucket()
-    if bucket == "morning":
-        return "Утро — лёгкий завтрак рядом.", "На каждый день"
-    if bucket == "lunch":
-        return "Обед — сытное горячее рядом.", "Горячие блюда"
-    if bucket == "evening":
-        return "Вечер — тёплое, без тяжести.", "Горячие блюда"
-    return "Поздно — суп или салат.", "Закуски и салаты"
+def _hour_bucket(user: User | None = None) -> str:
+    if user is None:
+        return hour_bucket()
+    return build_meal_context(user=user).bucket
 
 
 async def _recent_search_groups(session: AsyncSession, user_id: int) -> list[str]:
@@ -104,32 +108,108 @@ def food_matches_diet(food_name: str, food_category: str, diet: str | None) -> b
     return True
 
 
-async def wellness_tip(session: AsyncSession, user: User) -> dict:
-    msg, prefer = _base_tip_for_hour()
-    personalized = False
+async def build_wellness_snapshot(session: AsyncSession, user: User) -> dict:
+    now = local_now(user)
+    ctx = build_meal_context(user=user)
+    _, day = await get_day_nutrition(session, user)
 
+    daily_target = daily_calorie_target(user.activity_level)
+    meal_budget = meal_calorie_budget(ctx.bucket, user.activity_level)
+    kcal_left = max(0, daily_target - day.kcal_total)
+    meal_left = max(0, meal_budget - sum(m.get("kcal", 0) for m in day.meals if m.get("bucket") == ctx.bucket))
+
+    last_water_hour: int | None = None
+    if day.last_water_at:
+        try:
+            from datetime import datetime
+
+            last_water_hour = datetime.fromisoformat(day.last_water_at).hour
+        except ValueError:
+            last_water_hour = None
+
+    water = water_reminder_text(now.hour, day.water_glasses, last_water_hour)
+    schedule = meal_schedule_hint(ctx.bucket, now.hour)
+    harmony = harmony_hint(day, ctx.bucket, ctx.prefer_groups[0] if ctx.prefer_groups else None)
+    missing = missing_rainbow_colors(day)
+
+    message = ctx.section_label
     if user.wellness_consent:
-        personalized = True
         recent = await _recent_search_groups(session, user.id)
-        bucket = _hour_bucket()
         if recent:
             last = recent[0]
-            if last in _HEAVY_GROUPS and bucket in ("evening", "night"):
-                msg = "Недавно было сытно — сейчас уместнее суп или салат."
-                prefer = "Закуски и салаты"
-            elif last in _LIGHT_GROUPS and bucket == "lunch":
-                msg = "После лёгкого — на обед логично сытное горячее."
-                prefer = "Горячие блюда"
+            if last in _HEAVY_GROUPS and ctx.bucket in ("evening", "night"):
+                message = "После сытного — суп или салат"
+            elif last in _LIGHT_GROUPS and ctx.bucket == "lunch":
+                message = "На обед уместно сытное горячее"
 
-    if user.diet_preference:
-        msg = f"{msg} ({user.diet_preference})."
+    parts = [message]
+    if harmony:
+        parts.append(harmony)
+    if schedule:
+        parts.append(schedule)
+
+    prefer = ctx.prefer_groups[0] if ctx.prefer_groups else "Горячие блюда"
+    balance = _BALANCE_HINTS.get(prefer, "")
+    if missing:
+        balance = f"Добавьте «радугу»: {', '.join(missing[:2])}. {balance}".strip()
 
     return {
-        "personalized": personalized,
-        "message": msg,
+        "message": " · ".join(parts[:3]),
+        "balance_hint": balance,
         "suggestion": prefer,
-        "balance_hint": _BALANCE_HINTS.get(prefer, ""),
+        "personalized": user.wellness_consent,
+        "activity_level": user.activity_level or "moderate",
+        "activity_label": _ACTIVITY_LABELS.get(user.activity_level or "moderate", "умеренная"),
+        "calorie_target": daily_target,
+        "calories_today": day.kcal_total,
+        "calories_left": kcal_left,
+        "meal_budget": meal_budget,
+        "meal_calories_left": meal_left,
+        "protein_g": day.protein_g,
+        "carbs_g": day.carbs_g,
+        "fat_g": day.fat_g,
+        "water_glasses": day.water_glasses,
+        "water_target": 8,
+        "water_reminder": water or "",
+        "meal_schedule": schedule or "",
+        "harmony_hint": harmony,
+        "rainbow_progress": rainbow_progress(day),
+        "rainbow_missing": missing,
+        "rainbow": {c: day.rainbow.get(c, 0) for c in RAINBOW_ORDER},
+        "meal_bucket": ctx.bucket,
     }
+
+
+async def wellness_tip(session: AsyncSession, user: User) -> dict:
+    snap = await build_wellness_snapshot(session, user)
+    if user.diet_preference:
+        snap["message"] = f"{snap['message']} ({user.diet_preference})".strip()
+    return snap
+
+
+def wellness_score_for_food(
+    food,
+    *,
+    user: User,
+    day,
+    meal_ctx,
+) -> int:
+    if not user.wellness_consent:
+        return 0
+    nut = estimate_food_nutrients(
+        food.name,
+        food.category,
+        food.ingredients or "",
+        food.portions or 1,
+    )
+    prefer = meal_ctx.prefer_groups[0] if meal_ctx.prefer_groups else None
+    return score_food_for_wellness(
+        nut,
+        day=day,
+        bucket=meal_ctx.bucket,
+        activity=user.activity_level,
+        prefer_group=prefer,
+    )
 
 
 def balance_hint_for_intent(cat_hint: dict) -> str:
@@ -146,26 +226,54 @@ async def harmonious_recommendations(
     limit: int = 12,
     prefer_groups: list[str] | None = None,
 ) -> list[tuple]:
-    tip = await wellness_tip(session, user)
-    prefer_group = (prefer_groups or [None])[0] or tip.get("suggestion") or "Горячие блюда"
+    from backend.services.memory_service import preferred_groups
 
-    all_recs = await ai_analyst_service.get_recommendations(session, user, limit=limit * 3)
-    matched: list[tuple] = []
-    rest: list[tuple] = []
+    memory = await preferred_groups(session, user.id)
+    ctx = build_meal_context(memory_groups=memory, user=user)
+    prefer_group = (prefer_groups or list(ctx.prefer_groups) or [None])[0] or ctx.prefer_groups[0]
+
+    all_recs = await ai_analyst_service.get_recommendations(session, user, limit=limit * 4)
+    _, day = await get_day_nutrition(session, user)
+
+    scored: list[tuple] = []
     for item in all_recs:
         food = item[0]
         if not food_matches_diet(food.name, food.category, user.diet_preference):
             continue
         group = food_group(food.category)
-        if group == prefer_group:
-            matched.append(item)
-        else:
-            rest.append(item)
+        base = 2 if group == prefer_group else 0
+        if user.wellness_consent:
+            base += wellness_score_for_food(food, user=user, day=day, meal_ctx=ctx)
+        scored.append((base, item))
 
-    out = matched[:limit]
-    if len(out) < limit:
-        out.extend(rest[: limit - len(out)])
-    return out
+    scored.sort(key=lambda x: -x[0])
+    return [item for _, item in scored[:limit]]
+
+
+def wellness_response(user: User, snap: dict) -> dict:
+    return {
+        "wellness_consent": user.wellness_consent,
+        "diet_preference": user.diet_preference,
+        "activity_level": user.activity_level or "moderate",
+        "message": snap.get("message", ""),
+        "balance_hint": snap.get("balance_hint", ""),
+        "suggestion": snap.get("suggestion", ""),
+        "calorie_target": snap.get("calorie_target", 0),
+        "calories_today": snap.get("calories_today", 0),
+        "calories_left": snap.get("calories_left", 0),
+        "meal_budget": snap.get("meal_budget", 0),
+        "protein_g": snap.get("protein_g", 0),
+        "carbs_g": snap.get("carbs_g", 0),
+        "fat_g": snap.get("fat_g", 0),
+        "water_glasses": snap.get("water_glasses", 0),
+        "water_target": snap.get("water_target", 8),
+        "water_reminder": snap.get("water_reminder", ""),
+        "meal_schedule": snap.get("meal_schedule", ""),
+        "harmony_hint": snap.get("harmony_hint", ""),
+        "rainbow_progress": snap.get("rainbow_progress", 0),
+        "rainbow_missing": snap.get("rainbow_missing", []),
+        "rainbow": snap.get("rainbow", {}),
+    }
 
 
 async def recipe_hints_for_cook(
@@ -203,3 +311,16 @@ async def recipe_hints_for_cook(
         ]
 
     return hints[:4]
+
+
+async def feed_wellness_context(session: AsyncSession, user: User) -> dict | None:
+    if not user.wellness_consent:
+        return None
+    snap = await build_wellness_snapshot(session, user)
+    return {
+        "calorie_summary": f"{snap['calories_today']} / {snap['calorie_target']} ккал",
+        "meal_budget_label": f"~{snap['meal_budget']} ккал на {snap['meal_bucket']}",
+        "water_reminder": snap.get("water_reminder") or "",
+        "harmony_hint": snap.get("harmony_hint") or "",
+        "rainbow_progress": snap["rainbow_progress"],
+    }

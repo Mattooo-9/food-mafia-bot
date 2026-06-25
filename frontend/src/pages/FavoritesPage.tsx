@@ -59,7 +59,7 @@ export default function FavoritesPage() {
       {tab === "foods" &&
         (foods.length === 0 ? (
           <div className="empty">
-            <span className="emoji">🤍</span>Нет избранных блюд
+            <p className="empty-line">Нет избранных блюд</p>
           </div>
         ) : (
           foods.map((food) => <FoodCard key={food.id} food={food} onToggleFavorite={removeFood} />)
@@ -68,7 +68,7 @@ export default function FavoritesPage() {
       {tab === "cooks" &&
         (cooks.length === 0 ? (
           <div className="empty">
-            <span className="emoji">🤍</span>Нет избранных поваров
+            <p className="empty-line">Нет избранных поваров</p>
           </div>
         ) : (
           cooks.map((cook) => <CookCard key={cook.id} cook={cook} onToggleFavorite={removeCook} />)

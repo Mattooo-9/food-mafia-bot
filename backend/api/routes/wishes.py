@@ -36,6 +36,9 @@ async def my_wishes(user: CurrentUser, session: SessionDep) -> list[OrderWishOut
 async def my_claimed_wishes(cook: CurrentCook, session: SessionDep) -> list[OrderWishOut]:
     wishes = await order_wish_service.list_cook_claimed_wishes(session, cook)
     return [serialize_order_wish(w, viewer=cook) for w in wishes]
+
+
+@router.get("/cook/wishes", response_model=list[OrderWishOut])
 async def open_wishes_for_cook(
     cook: CurrentCook,
     session: SessionDep,
@@ -79,25 +82,26 @@ async def set_wellness(payload: WellnessIn, user: CurrentUser, session: SessionD
         user,
         consent=payload.consent,
         diet_preference=payload.diet_preference,
+        activity_level=payload.activity_level,
     )
-    tip = await nutrition_service.wellness_tip(session, updated)
-    return WellnessOut(
-        wellness_consent=updated.wellness_consent,
-        diet_preference=updated.diet_preference,
-        message=tip.get("message", ""),
-        balance_hint=tip.get("balance_hint", ""),
-    )
+    snap = await nutrition_service.wellness_tip(session, updated)
+    return WellnessOut(**nutrition_service.wellness_response(updated, snap))
+
+
+@router.post("/me/wellness/water", response_model=WellnessOut)
+async def log_water(user: CurrentUser, session: SessionDep) -> WellnessOut:
+    from backend.services.wellness_tracker import log_water as track_water
+
+    await track_water(session, user)
+    await session.commit()
+    snap = await nutrition_service.wellness_tip(session, user)
+    return WellnessOut(**nutrition_service.wellness_response(user, snap))
 
 
 @router.get("/ai/wellness", response_model=WellnessOut)
 async def get_wellness(user: CurrentUser, session: SessionDep) -> WellnessOut:
-    tip = await nutrition_service.wellness_tip(session, user)
-    return WellnessOut(
-        wellness_consent=user.wellness_consent,
-        diet_preference=user.diet_preference,
-        message=tip.get("message", ""),
-        balance_hint=tip.get("balance_hint", ""),
-    )
+    snap = await nutrition_service.wellness_tip(session, user)
+    return WellnessOut(**nutrition_service.wellness_response(user, snap))
 
 
 @router.get("/cook/recipe-hints", response_model=RecipeHintsOut)

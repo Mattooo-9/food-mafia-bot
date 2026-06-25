@@ -53,7 +53,12 @@ async def cmd_start(message: Message, command: CommandObject) -> None:
     async with async_session_factory() as session:
         user, is_new = await user_service.get_or_create_user(
             session,
-            TelegramUser(tg_id=tg.id, username=tg.username, first_name=tg.first_name),
+            TelegramUser(
+                tg_id=tg.id,
+                username=tg.username,
+                first_name=tg.first_name,
+                language_code=tg.language_code,
+            ),
             ref_code,
         )
 
@@ -73,9 +78,10 @@ async def cmd_start(message: Message, command: CommandObject) -> None:
         return
     await message.answer(text, reply_markup=markup)
     await message.answer("Быстрые действия:", reply_markup=main_reply_keyboard())
-    from backend.handlers.guide import schedule_new_user_guide
+    if is_new:
+        from backend.handlers.guide import schedule_new_user_guide
 
-    await schedule_new_user_guide(message, tg.first_name)
+        await schedule_new_user_guide(message, tg.first_name)
 
 
 @router.message(Command("app"))

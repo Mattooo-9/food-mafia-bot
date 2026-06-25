@@ -1,4 +1,5 @@
 import { getInitData } from "./telegram";
+import { detectTimezone } from "./i18n";
 import type { Cook, Food, FoodFilters, MarketOverview, Order, OrderStatus, OrderWish, PaymentMethod, PriceSuggestion, ReferralInfo, Review, User, UserInsights, FoodEvaluation, Recommendation, CategoriesResponse, CategorizeResult, AssistantSearch, SearchHistoryItem, WellnessInfo } from "./types";
 
 export class ApiError extends Error {
@@ -12,6 +13,7 @@ export class ApiError extends Error {
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {
     "X-Telegram-Init-Data": getInitData(),
+    "X-Client-Timezone": detectTimezone(),
     ...(options.headers as Record<string, string> | undefined),
   };
   if (options.body && typeof options.body === "string") {
@@ -66,6 +68,9 @@ export const api = {
     }),
   setLocation: (lat: number, lon: number) =>
     request<User>("/api/me/location", { method: "POST", body: JSON.stringify({ lat, lon }) }),
+  setPreferences: (data: { locale?: string; timezone?: string }) =>
+    request<User>("/api/me/preferences", { method: "POST", body: JSON.stringify(data) }),
+  completeOnboarding: () => request<User>("/api/me/onboarding", { method: "POST", body: "{}" }),
   updateCookProfile: (data: {
     cook_name?: string;
     cook_description?: string;
@@ -139,11 +144,20 @@ export const api = {
   cancelWish: (id: number) => request<OrderWish>(`/api/wishes/${id}/cancel`, { method: "POST" }),
 
   getWellness: () => request<WellnessInfo>("/api/ai/wellness"),
-  setWellness: (consent: boolean, diet_preference?: string | null) =>
+  setWellness: (
+    consent: boolean,
+    diet_preference?: string | null,
+    activity_level?: string | null,
+  ) =>
     request<WellnessInfo>("/api/me/wellness", {
       method: "POST",
-      body: JSON.stringify({ consent, diet_preference: diet_preference ?? null }),
+      body: JSON.stringify({
+        consent,
+        diet_preference: diet_preference ?? null,
+        activity_level: activity_level ?? null,
+      }),
     }),
+  logWater: () => request<WellnessInfo>("/api/me/wellness/water", { method: "POST", body: "{}" }),
   getRecipeHints: (q = "") => {
     const params = new URLSearchParams();
     if (q) params.set("q", q);

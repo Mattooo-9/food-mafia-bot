@@ -186,6 +186,10 @@ async def refresh_market_data(session: AsyncSession) -> int:
 
     await session.execute(delete(MarketSnapshot))
 
+    from backend.services import search_history_service
+
+    unmet = await search_history_service.unmet_demand_by_group(session)
+
     regions: dict[str, tuple[float | None, float | None]] = {"global": (None, None)}
     cooks_result = await session.execute(
         select(User.lat, User.lon).where(
@@ -205,6 +209,9 @@ async def refresh_market_data(session: AsyncSession) -> int:
         )
         for cat in reg_overview.categories:
             demand = analytics_service.demand_index(cat)
+            gap = search_history_service.category_matches_unmet(cat.category, unmet)
+            if gap:
+                demand = min(100, demand + min(25, gap * 4))
             competition = analytics_service.competition_index(cat.dish_count)
             trend = "rising" if demand >= 60 else "falling" if demand <= 35 else "stable"
             session.add(

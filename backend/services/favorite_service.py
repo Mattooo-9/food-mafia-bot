@@ -16,6 +16,9 @@ async def add_favorite_food(session: AsyncSession, user: User, food_id: int) -> 
     )
     if existing.first() is None:
         session.add(FavoriteFood(user_id=user.id, food_id=food_id))
+        from backend.services import memory_service
+
+        await memory_service.observe_favorite(session, user, category=food.category)
         await session.commit()
     return True
 

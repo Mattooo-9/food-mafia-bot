@@ -15,6 +15,7 @@ from backend.utils.categories import (
 )
 from backend.utils.search_intent import extract_search_words
 from backend.utils.geo import haversine_m
+from backend.utils.locale_tz import bounding_degrees
 
 
 class FoodError(Exception):
@@ -169,6 +170,7 @@ async def search_foods(
 ) -> list[FoodWithDistance]:
     cat_hint = categorize_text(query=q.strip()) if q and q.strip() else None
     exclude = exclude_groups or []
+    has_location = viewer.lat is not None and viewer.lon is not None
 
     query = (
         select(Food)
@@ -188,6 +190,20 @@ async def search_foods(
     if min_rating is not None:
         query = query.where(User.rating_avg >= min_rating)
 
+    radius = max_distance_m
+    if radius is None and has_location and feed == "nearby":
+        radius = 10_000.0
+    if has_location and radius is not None:
+        dlat, dlon = bounding_degrees(viewer.lat, radius)
+        query = query.where(
+            User.lat.isnot(None),
+            User.lon.isnot(None),
+            User.lat >= viewer.lat - dlat,
+            User.lat <= viewer.lat + dlat,
+            User.lon >= viewer.lon - dlon,
+            User.lon <= viewer.lon + dlon,
+        )
+
     if q and q.strip():
         query = _apply_text_search(
             query, q.strip(), cat_hint, strict=strict_category or bool(exclude),
@@ -205,7 +221,6 @@ async def search_foods(
         foods = [f for f in foods if food_matches_intent(f.category, hint, exclude)]
 
     items: list[FoodWithDistance] = []
-    has_location = viewer.lat is not None and viewer.lon is not None
     for food in foods:
         distance: float | None = None
         cook = food.cook
