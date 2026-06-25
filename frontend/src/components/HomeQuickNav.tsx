@@ -5,7 +5,6 @@ const TILES = [
   { to: "/cooks", icon: "👨‍🍳", label: "Повара" },
   { to: "/orders", icon: "📋", label: "Заказы" },
   { to: "/favorites", icon: "❤️", label: "Избранное" },
-  { to: "/profile", icon: "⚙️", label: "Профиль" },
 ] as const;
 
 export default function HomeQuickNav() {

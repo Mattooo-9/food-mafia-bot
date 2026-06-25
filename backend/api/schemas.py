@@ -55,6 +55,17 @@ class UserOut(BaseModel):
     diet_preference: str | None = None
 
 
+class UserInsightsOut(BaseModel):
+    has_location: bool
+    geo_label: str
+    meal_hint: str
+    memory_hint: str
+    summary: str
+    active_orders: int
+    open_wishes: int
+    claimed_wishes: int
+
+
 class ReferralOut(BaseModel):
     balance: float
     code: str

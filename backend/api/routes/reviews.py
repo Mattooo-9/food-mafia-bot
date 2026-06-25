@@ -18,4 +18,4 @@ async def create_review(payload: ReviewIn, user: CurrentUser, session: SessionDe
     except ReviewError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     review.buyer = user
-    return serialize_review(review)
+    return serialize_review(review, viewer=user)

@@ -1,6 +1,17 @@
 export type PaymentMethod = "STARS" | "TON" | "CASH" | "TRANSFER" | "CARD";
 export type PaymentStatus = "PENDING" | "PAID";
 
+export interface UserInsights {
+  has_location: boolean;
+  geo_label: string;
+  meal_hint: string;
+  memory_hint: string;
+  summary: string;
+  active_orders: number;
+  open_wishes: number;
+  claimed_wishes: number;
+}
+
 export interface User {
   id: number;
   tg_id: number;

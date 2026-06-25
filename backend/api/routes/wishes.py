@@ -23,29 +23,26 @@ async def create_wish(payload: OrderWishIn, user: CurrentUser, session: SessionD
         )
     except OrderWishError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return serialize_order_wish(wish)
+    return serialize_order_wish(wish, viewer=user)
 
 
 @router.get("/wishes", response_model=list[OrderWishOut])
 async def my_wishes(user: CurrentUser, session: SessionDep) -> list[OrderWishOut]:
     wishes = await order_wish_service.list_buyer_wishes(session, user)
-    return [serialize_order_wish(w) for w in wishes]
+    return [serialize_order_wish(w, viewer=user) for w in wishes]
 
 
 @router.get("/cook/wishes/mine", response_model=list[OrderWishOut])
 async def my_claimed_wishes(cook: CurrentCook, session: SessionDep) -> list[OrderWishOut]:
     wishes = await order_wish_service.list_cook_claimed_wishes(session, cook)
-    return [serialize_order_wish(w) for w in wishes]
-
-
-@router.get("/cook/wishes", response_model=list[OrderWishOut])
+    return [serialize_order_wish(w, viewer=cook) for w in wishes]
 async def open_wishes_for_cook(
     cook: CurrentCook,
     session: SessionDep,
     max_distance_m: float | None = Query(default=15000, ge=500),
 ) -> list[OrderWishOut]:
     items = await order_wish_service.list_open_wishes(session, cook, max_distance_m=max_distance_m)
-    return [serialize_order_wish(w, distance_m=d) for w, d in items]
+    return [serialize_order_wish(w, distance_m=d, viewer=cook) for w, d in items]
 
 
 @router.post("/wishes/{wish_id}/claim", response_model=OrderWishOut)
@@ -54,7 +51,7 @@ async def claim_wish(wish_id: int, cook: CurrentCook, session: SessionDep) -> Or
         wish = await order_wish_service.claim_wish(session, cook, wish_id)
     except OrderWishError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return serialize_order_wish(wish)
+    return serialize_order_wish(wish, viewer=cook)
 
 
 @router.post("/wishes/{wish_id}/cancel", response_model=OrderWishOut)
@@ -63,7 +60,7 @@ async def cancel_wish(wish_id: int, user: CurrentUser, session: SessionDep) -> O
         wish = await order_wish_service.cancel_wish(session, user, wish_id)
     except OrderWishError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return serialize_order_wish(wish)
+    return serialize_order_wish(wish, viewer=user)
 
 
 @router.post("/wishes/{wish_id}/complete", response_model=OrderWishOut)
@@ -72,7 +69,7 @@ async def complete_wish(wish_id: int, cook: CurrentCook, session: SessionDep) ->
         wish = await order_wish_service.complete_wish(session, cook, wish_id)
     except OrderWishError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return serialize_order_wish(wish)
+    return serialize_order_wish(wish, viewer=cook)
 
 
 @router.post("/me/wellness", response_model=WellnessOut)

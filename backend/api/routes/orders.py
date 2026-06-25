@@ -27,7 +27,7 @@ async def create_order(payload: OrderIn, user: CurrentUser, session: SessionDep)
     elif order.payment_method == PaymentMethod.TON.value:
         ton_payment = payment_service.build_ton_payment(order, order.cook)
 
-    return serialize_order(order, invoice_link=invoice_link, ton_payment=ton_payment)
+    return serialize_order(order, invoice_link=invoice_link, ton_payment=ton_payment, viewer=user)
 
 
 @router.get("/orders", response_model=list[OrderOut])
@@ -36,14 +36,14 @@ async def my_orders(user: CurrentUser, session: SessionDep) -> list[OrderOut]:
     result = []
     for order in orders:
         review = await review_service.get_order_review(session, order.id)
-        result.append(serialize_order(order, has_review=review is not None))
+        result.append(serialize_order(order, has_review=review is not None, viewer=user))
     return result
 
 
 @router.get("/cook/orders", response_model=list[OrderOut])
 async def cook_orders(cook: CurrentCook, session: SessionDep) -> list[OrderOut]:
     orders = await order_service.get_cook_orders(session, cook)
-    return [serialize_order(o) for o in orders]
+    return [serialize_order(o, viewer=cook) for o in orders]
 
 
 @router.post("/orders/{order_id}/status", response_model=OrderOut)
@@ -54,7 +54,7 @@ async def change_order_status(
         order = await order_service.change_status(session, order_id, payload.status, user)
     except OrderError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return serialize_order(order)
+    return serialize_order(order, viewer=user)
 
 
 @router.post("/orders/{order_id}/cancel", response_model=OrderOut)
@@ -63,7 +63,7 @@ async def cancel_order(order_id: int, user: CurrentUser, session: SessionDep) ->
         order = await order_service.change_status(session, order_id, OrderStatus.CANCELLED, user)
     except OrderError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return serialize_order(order)
+    return serialize_order(order, viewer=user)
 
 
 @router.post("/orders/{order_id}/confirm-ton", response_model=OrderOut)
@@ -72,4 +72,4 @@ async def confirm_ton_payment(order_id: int, user: CurrentUser, session: Session
         order = await order_service.confirm_ton_payment(session, order_id, user)
     except OrderError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return serialize_order(order)
+    return serialize_order(order, viewer=user)

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, ApiError } from "../api";
 import AccountHistory from "../components/AccountHistory";
+import PrivacyCard from "../components/PrivacyCard";
 import ReferralCard from "../components/ReferralCard";
 import WellnessCard from "../components/WellnessCard";
 import LocationBar from "../components/LocationBar";
@@ -72,14 +73,24 @@ export default function ProfilePage() {
 
   const toggleOnline = async () => {
     haptic();
-    await api.updateCookProfile({ is_online: !user.is_online });
-    await refresh();
+    try {
+      await api.updateCookProfile({ is_online: !user.is_online });
+      await refresh();
+    } catch (e) {
+      haptic("error");
+      showAlert(e instanceof ApiError ? e.message : "Не удалось изменить статус");
+    }
   };
 
   const unsubscribe = async (cook: Cook) => {
     haptic();
-    await api.unsubscribe(cook.id);
-    setSubscriptions((prev) => prev.filter((c) => c.id !== cook.id));
+    try {
+      await api.unsubscribe(cook.id);
+      setSubscriptions((prev) => prev.filter((c) => c.id !== cook.id));
+    } catch (e) {
+      haptic("error");
+      showAlert(e instanceof ApiError ? e.message : "Не удалось отписаться");
+    }
   };
 
   return (
@@ -87,6 +98,8 @@ export default function ProfilePage() {
       <h1 className="page-title">Профиль</h1>
 
       <LocationBar />
+
+      <PrivacyCard onCleared={() => setSearches([])} />
 
       <WellnessCard />
 
@@ -101,8 +114,9 @@ export default function ProfilePage() {
 
       <ReferralCard />
 
-      <div className="card">
-        <strong>{user.first_name ?? user.username ?? `id${user.tg_id}`}</strong>
+      <div className="card gloss-card">
+        <strong>{user.first_name ?? "Профиль"}</strong>
+        {user.is_cook && user.cook_name && <p className="hint">{user.cook_name}</p>}
       </div>
 
       {user.is_cook && (

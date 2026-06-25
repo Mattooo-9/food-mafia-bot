@@ -57,4 +57,4 @@ async def get_cook_foods(cook_id: int, user: CurrentUser, session: SessionDep) -
 @router.get("/cooks/{cook_id}/reviews", response_model=list[ReviewOut])
 async def get_cook_reviews(cook_id: int, user: CurrentUser, session: SessionDep) -> list[ReviewOut]:
     reviews = await review_service.get_cook_reviews(session, cook_id)
-    return [serialize_review(r) for r in reviews]
+    return [serialize_review(r, viewer=user) for r in reviews]

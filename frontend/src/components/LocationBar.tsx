@@ -1,33 +1,42 @@
-import { useState } from "react";
 import { haptic, showAlert } from "../telegram";
 import { useUser } from "../UserContext";
 
-export default function LocationBar() {
-  const { user, requestLocation } = useUser();
-  const [locating, setLocating] = useState(false);
+interface Props {
+  compact?: boolean;
+}
 
+export default function LocationBar({ compact = false }: Props) {
+  const { user, requestLocation } = useUser();
   const hasLocation = user?.lat != null && user?.lon != null;
 
   const update = async () => {
-    setLocating(true);
     const ok = await requestLocation();
-    setLocating(false);
     haptic(ok ? "success" : "error");
     if (!ok) {
-      showAlert("Не удалось определить. Отправьте геолокацию кнопкой в чате бота.");
+      showAlert("Отправьте геолокацию кнопкой в чате бота — координаты не показываем другим.");
     }
   };
+
+  if (compact) {
+    return (
+      <button
+        type="button"
+        className={`geo-pill ${hasLocation ? "on" : ""}`}
+        onClick={() => void update()}
+      >
+        {hasLocation ? "📍 Рядом" : "📍 Гео"}
+      </button>
+    );
+  }
 
   return (
     <div className={`location-bar ${hasLocation ? "active" : ""}`}>
       <span className="location-dot">{hasLocation ? "●" : "○"}</span>
       <span className="location-text">
-        {hasLocation
-          ? `Рядом с вами · ${user!.lat!.toFixed(3)}, ${user!.lon!.toFixed(3)}`
-          : "Геолокация не указана — поиск по расстоянию ограничен"}
+        {hasLocation ? "Поиск рядом с вами" : "Включите гео — покажем ближайшее"}
       </span>
-      <button type="button" className="location-btn" disabled={locating} onClick={() => void update()}>
-        {locating ? "…" : hasLocation ? "Обновить" : "Определить"}
+      <button type="button" className="location-btn" onClick={() => void update()}>
+        {hasLocation ? "Обновить" : "Включить"}
       </button>
     </div>
   );

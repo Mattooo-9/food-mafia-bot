@@ -35,7 +35,7 @@ export default function AiSearchHero({
     onSearch(label);
   };
 
-  const chips = suggestions.length > 0 ? suggestions : ["Обед", "Суп", "Салат"];
+  const chips = (suggestions.length > 0 ? suggestions : ["Обед", "Суп", "Салат"]).slice(0, 3);
 
   return (
     <div className="ai-search-hero">

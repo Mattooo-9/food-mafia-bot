@@ -1,13 +1,18 @@
 from fastapi import APIRouter, HTTPException
 
 from backend.api.deps import CurrentUser, SessionDep
-from backend.api.schemas import CategoriesOut, CookProfileIn, CurrencyOut, LocationIn, OkOut, ReferralOut, SearchHistoryOut, UserOut, WalletIn
+from backend.api.schemas import CategoriesOut, CookProfileIn, CurrencyOut, LocationIn, OkOut, ReferralOut, SearchHistoryOut, UserInsightsOut, UserOut, WalletIn
 from backend.config import settings
-from backend.services import referral_service, search_history_service, user_service
+from backend.services import insights_service, referral_service, search_history_service, user_service
 from backend.services.user_service import WalletError
 from backend.utils.categories import tree_for_api, all_paths
 
 router = APIRouter(tags=["users"])
+
+
+@router.get("/me/insights", response_model=UserInsightsOut)
+async def my_insights(user: CurrentUser, session: SessionDep) -> UserInsightsOut:
+    return UserInsightsOut(**await insights_service.user_insights(session, user))
 
 
 @router.get("/me", response_model=UserOut)
@@ -74,6 +79,15 @@ async def get_categories() -> CategoriesOut:
 async def my_searches(user: CurrentUser, session: SessionDep) -> list[SearchHistoryOut]:
     rows = await search_history_service.list_searches(session, user.id)
     return [SearchHistoryOut.model_validate(r) for r in rows]
+
+
+@router.delete("/me/privacy", response_model=OkOut)
+async def wipe_privacy_data(user: CurrentUser, session: SessionDep) -> OkOut:
+    from backend.services import memory_service
+
+    await search_history_service.clear_searches(session, user.id)
+    await memory_service.clear_memory(session, user.id)
+    return OkOut()
 
 
 @router.delete("/me/searches", response_model=OkOut)
