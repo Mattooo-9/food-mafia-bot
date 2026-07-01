@@ -1,6 +1,21 @@
 export type PaymentMethod = "STARS" | "TON" | "CASH" | "TRANSFER" | "CARD";
 export type PaymentStatus = "PENDING" | "PAID";
 
+export interface AppConfig {
+  region: {
+    locale: string;
+    currency: string;
+    currency_label: string;
+    ton_per_star: number;
+    payment_methods: PaymentMethod[];
+    wish_radius_m: number;
+    search_radius_m: number;
+    telegram_proxy_hint: boolean;
+  };
+  strings: Record<string, string>;
+  app_title: string;
+}
+
 export interface UserInsights {
   has_location: boolean;
   geo_label: string;
@@ -16,8 +31,7 @@ export interface User {
   id: number;
   username: string | null;
   first_name: string | null;
-  lat: number | null;
-  lon: number | null;
+  has_location: boolean;
   is_cook: boolean;
   cook_name: string | null;
   cook_description: string | null;

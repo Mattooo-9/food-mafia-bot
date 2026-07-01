@@ -1,71 +1,67 @@
-export type Locale = "ru" | "en";
-
-const MESSAGES: Record<Locale, Record<string, string>> = {
-  ru: {
-    "tab.feed": "Лента",
-    "tab.cooks": "Повара",
-    "tab.orders": "Заказы",
-    "tab.favorites": "Избранное",
-    "tab.kitchen": "Кухня",
-    "tab.profile": "Профиль",
-    "onboarding.title": "Как пользоваться",
-    "onboarding.step1": "Геолокация — блюда рядом",
-    "onboarding.step2": "Поиск — название или категория",
-    "onboarding.step3": "Заказ или запрос поварам",
-    "onboarding.geo": "Включить гео",
-    "onboarding.done": "Понятно",
-    "profile.title": "Профиль",
-    "profile.language": "Язык",
-    "profile.lang.ru": "Русский",
-    "profile.lang.en": "English",
-    "app.error": "Откройте приложение через Telegram",
-    "app.hint": "Запустите бота и нажмите «Открыть Еда Рядом».",
-    "feed.orders": "Заказы",
-    "feed.wish": "Запрос поварам",
-    "feed.no_geo": "Включите геолокацию в шапке",
-    "feed.no_supply": "Нет блюд в каталоге",
-    "feed.search_placeholder": "Что хотите поесть?",
-  },
-  en: {
-    "tab.feed": "Feed",
-    "tab.cooks": "Cooks",
-    "tab.orders": "Orders",
-    "tab.favorites": "Favorites",
-    "tab.kitchen": "Kitchen",
-    "tab.profile": "Profile",
-    "onboarding.title": "Quick start",
-    "onboarding.step1": "Location — dishes nearby",
-    "onboarding.step2": "Search — dish or category",
-    "onboarding.step3": "Order or request a cook",
-    "onboarding.geo": "Enable location",
-    "onboarding.done": "Got it",
-    "profile.title": "Profile",
-    "profile.language": "Language",
-    "profile.lang.ru": "Русский",
-    "profile.lang.en": "English",
-    "app.error": "Open the app from Telegram",
-    "app.hint": "Start the bot and tap «Open Food Nearby».",
-    "feed.orders": "Orders",
-    "feed.wish": "Request cooks",
-    "feed.no_geo": "Enable location in the header",
-    "feed.no_supply": "No dishes in catalog",
-    "feed.search_placeholder": "What would you like to eat?",
-  },
+const FALLBACK_RU: Record<string, string> = {
+  "tab.feed": "Лента",
+  "tab.cooks": "Повара",
+  "tab.orders": "Заказы",
+  "tab.favorites": "Избранное",
+  "tab.kitchen": "Кухня",
+  "tab.profile": "Профиль",
+  "app.title": "Еда Рядом",
+  "app.error": "Откройте приложение через Telegram",
+  "app.hint": "Запустите бота и нажмите «Открыть Еда Рядом».",
+  "search.placeholder": "Что хотите поесть?",
+  "geo.enable": "Гео",
+  "geo.nearby": "Рядом",
+  "geo.nearby_section": "Рядом",
+  "search.not_found": "Не найдено",
+  "feed.no_geo": "Включите «Гео» в шапке",
+  "feed.no_supply": "Рядом пока пусто",
+  "profile.title": "Профиль",
+  "orders.title": "Заказы",
 };
 
-let currentLocale: Locale = "ru";
+const FALLBACK_EN: Record<string, string> = {
+  "tab.feed": "Feed",
+  "tab.cooks": "Cooks",
+  "tab.orders": "Orders",
+  "tab.favorites": "Saved",
+  "tab.kitchen": "Kitchen",
+  "tab.profile": "Profile",
+  "app.title": "Food Nearby",
+  "app.error": "Open the app from Telegram",
+  "app.hint": "Start the bot and open the mini app.",
+  "search.placeholder": "What would you like?",
+  "geo.enable": "Geo",
+  "geo.nearby": "Nearby",
+  "geo.nearby_section": "Nearby",
+  "search.not_found": "Not found",
+  "feed.no_geo": "Turn on Geo in the header",
+  "feed.no_supply": "Nothing nearby yet",
+  "profile.title": "Profile",
+  "orders.title": "Orders",
+};
 
-export function setLocale(locale: string | null | undefined): void {
-  const base = (locale ?? "ru").split("-")[0].toLowerCase();
-  currentLocale = base === "en" ? "en" : "ru";
+let strings: Record<string, string> = { ...FALLBACK_RU };
+let currentLocale = "ru";
+
+export function applyBundle(locale: string, bundle: Record<string, string>): void {
+  const base = (locale || "en").split("-")[0].toLowerCase();
+  currentLocale = base;
+  const fallback = base === "ru" ? FALLBACK_RU : FALLBACK_EN;
+  strings = { ...fallback, ...bundle };
 }
 
-export function getLocale(): Locale {
+export function setLocale(locale: string | null | undefined): void {
+  const base = (locale ?? "en").split("-")[0].toLowerCase();
+  currentLocale = base;
+  strings = base === "ru" ? { ...FALLBACK_RU } : { ...FALLBACK_EN };
+}
+
+export function getLocale(): string {
   return currentLocale;
 }
 
 export function t(key: string): string {
-  return MESSAGES[currentLocale][key] ?? MESSAGES.ru[key] ?? key;
+  return strings[key] ?? FALLBACK_EN[key] ?? FALLBACK_RU[key] ?? key;
 }
 
 export function detectTimezone(): string {

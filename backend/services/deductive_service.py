@@ -6,9 +6,10 @@ import re
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.i18n.messages import normalize_locale, t
 from backend.models import User
 from backend.services.meal_context import MealContext, local_now
-from backend.services.memory_service import get_memory, _loads_counts, _loads_queries
+from backend.services.memory_service import get_memory, _loads_queries
 from backend.services.nutrient_engine import (
     daily_calorie_target,
     harmony_hint,
@@ -19,11 +20,11 @@ from backend.services.nutrient_engine import (
 from backend.services.wellness_tracker import get_day_nutrition
 
 _DIET_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
-    (re.compile(r"веган|vegan", re.I), "веган"),
-    (re.compile(r"без\s*мяс|постн", re.I), "без мяса"),
-    (re.compile(r"без\s*слад|мало\s*сахар", re.I), "без сладкого"),
-    (re.compile(r"без\s*лакт|лактоз", re.I), "без лактозы"),
-    (re.compile(r"лёгк|легк|диет", re.I), "лёгкое"),
+    (re.compile(r"веган|vegan", re.I), "vegan"),
+    (re.compile(r"без\s*мяс|постн|vegetarian", re.I), "no_meat"),
+    (re.compile(r"без\s*слад|мало\s*сахар|no\s*sugar", re.I), "low_sugar"),
+    (re.compile(r"без\s*лакт|лактоз|lactose", re.I), "no_lactose"),
+    (re.compile(r"лёгк|легк|диет|light", re.I), "light"),
 )
 
 
@@ -57,8 +58,12 @@ def _estimate_water_glasses(hour: int, meals_count: int, kcal_today: int) -> int
     return min(8, base)
 
 
+def _user_locale(user: User) -> str:
+    return normalize_locale(user.language_code, user.locale)
+
+
 async def sync_user_profile(session: AsyncSession, user: User) -> User:
-    """Тихо выводит активность, рацион и включает умный режим."""
+    """Тихо выводит активность и рацион; wellness — после нескольких поисков."""
     mem = await get_memory(session, user.id)
     activity = _infer_activity(mem)
     diet = _infer_diet(mem, user)
@@ -69,7 +74,7 @@ async def sync_user_profile(session: AsyncSession, user: User) -> User:
     if diet and user.diet_preference != diet:
         user.diet_preference = diet
         changed = True
-    if not user.wellness_consent:
+    if (mem.searches_count or 0) >= 2 and not user.wellness_consent:
         user.wellness_consent = True
         changed = True
     if changed:
@@ -86,17 +91,19 @@ async def feed_companion(
     has_location: bool,
     query: str,
 ) -> str:
-    """Одна строка контекста — без повторов и банальностей."""
+    """Одна строка контекста — без повторов."""
+    loc = _user_locale(user)
+
     if state == "no_geo":
-        return "Включите «Гео» в шапке — покажем блюда рядом."
+        return t(loc, "companion.no_geo")
 
     if state == "search_empty" and query.strip():
-        return "Такого нет в ленте — опишите запрос во вкладке «Заказы»."
+        return t(loc, "companion.search_empty")
 
     if state == "no_supply":
-        return "Поваров рядом пока нет — загляните позже или оставьте запрос в «Заказах»."
+        return t(loc, "companion.no_supply")
 
-    if meal_ctx is None:
+    if not user.wellness_consent or meal_ctx is None:
         return ""
 
     now = local_now(user)
@@ -114,13 +121,13 @@ async def feed_companion(
 
     parts: list[str] = []
     if kcal_left < budget and meal_ctx.bucket in ("lunch", "evening"):
-        parts.append(f"На {meal_ctx.section_label.lower()} осталось ~{max(0, min(budget, kcal_left))} ккал")
+        meal = t(loc, f"meal.{meal_ctx.bucket}")
+        parts.append(t(loc, "hint.kcal_left", meal=meal, kcal=str(max(0, min(budget, kcal_left)))))
     elif harmony:
         parts.append(harmony.split(" · ")[0])
     missing = missing_rainbow_colors(day)
     if missing and not parts:
-        color_ru = {"red": "красные", "green": "зелёные", "orange": "оранжевые"}
-        parts.append(f"Добавьте {color_ru.get(missing[0], missing[0])} овощи/фрукты")
+        parts.append(t(loc, "hint.rainbow", color=missing[0]))
     if water and len(parts) < 2:
         parts.append(water)
 

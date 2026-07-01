@@ -1,11 +1,16 @@
 import type { IconName } from "./components/icons";
 import type { FeedType, OrderStatus, PaymentMethod, PaymentStatus } from "./types";
 
-/** Способы оплаты — по алфавиту (ru). */
 export const PAYMENT_METHODS: { id: PaymentMethod; label: string }[] = [
-  { id: "STARS" as PaymentMethod, label: "Telegram Stars ⭐" },
-  { id: "TON" as PaymentMethod, label: "TON 💎" },
-].sort((a, b) => a.label.localeCompare(b.label, "ru"));
+  { id: "STARS", label: "Telegram Stars ⭐" },
+  { id: "TON", label: "TON 💎" },
+  { id: "CASH", label: "Cash 💵" },
+];
+
+export function paymentMethodsForRegion(allowed?: PaymentMethod[]) {
+  const ids = allowed?.length ? allowed : (["STARS", "TON"] as PaymentMethod[]);
+  return PAYMENT_METHODS.filter((m) => ids.includes(m.id));
+}
 
 export const PAYMENT_METHOD_LABELS: Record<string, string> = {
   STARS: "Telegram Stars",

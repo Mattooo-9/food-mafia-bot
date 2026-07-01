@@ -1,5 +1,6 @@
 import { haptic, showAlert } from "../telegram";
 import { useUser } from "../UserContext";
+import { t } from "../i18n";
 import AppIcon from "./icons";
 
 interface Props {
@@ -9,13 +10,13 @@ interface Props {
 
 export default function LocationBar({ compact = false, active }: Props) {
   const { user, requestLocation } = useUser();
-  const hasLocation = active ?? (user?.lat != null && user?.lon != null);
+  const hasLocation = active ?? Boolean(user?.has_location);
 
   const update = async () => {
     const ok = await requestLocation();
     haptic(ok ? "success" : "error");
     if (!ok) {
-      showAlert("Отправьте геолокацию кнопкой в чате бота.");
+      showAlert(t("geo.enable"));
     }
   };
 
@@ -25,10 +26,10 @@ export default function LocationBar({ compact = false, active }: Props) {
         type="button"
         className={`geo-pill ${hasLocation ? "on" : ""}`}
         onClick={() => void update()}
-        aria-label={hasLocation ? "Геолокация включена" : "Включить геолокацию"}
+        aria-label={hasLocation ? t("geo.nearby") : t("geo.enable")}
       >
         <AppIcon name={hasLocation ? "geoOn" : "geo"} size={16} />
-        <span>{hasLocation ? "Рядом" : "Гео"}</span>
+        <span>{hasLocation ? t("geo.nearby") : t("geo.enable")}</span>
       </button>
     );
   }
@@ -36,9 +37,9 @@ export default function LocationBar({ compact = false, active }: Props) {
   return (
     <div className={`location-bar panel ${hasLocation ? "active" : ""}`}>
       <AppIcon name={hasLocation ? "geoOn" : "geo"} size={18} />
-      <span className="location-text">{hasLocation ? "Поиск по расстоянию" : "Геолокация выключена"}</span>
+      <span className="location-text">{hasLocation ? t("geo.nearby") : t("geo.enable")}</span>
       <button type="button" className="location-btn" onClick={() => void update()}>
-        {hasLocation ? "Обновить" : "Включить"}
+        {hasLocation ? t("geo.nearby") : t("geo.enable")}
       </button>
     </div>
   );

@@ -7,7 +7,8 @@ from collections import defaultdict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models import User
-from backend.services import favorite_service, food_service, memory_service
+from backend.i18n.messages import normalize_locale, t
+from backend.services import favorite_service, food_service, memory_service, insights_service
 from backend.services.food_service import FoodWithDistance
 from backend.utils.categories import SEP, food_group, normalize_category
 from backend.utils.search_intent import parse_search_intent
@@ -90,6 +91,7 @@ def _group_foods(
     cat_hint: dict | None,
     scores: dict[int, int],
     top_id: int | None = None,
+    locale: str = "en",
 ) -> list[dict]:
     if not items:
         return []
@@ -101,7 +103,7 @@ def _group_foods(
         top_item = next((i for i in items if i.food.id == top_id), None)
         if top_item:
             groups.append({
-                "title": "Выбор",
+                "title": t(locale, "group.pick"),
                 "subtitle": None,
                 "kind": "foods",
                 "items": [top_item],
@@ -109,10 +111,10 @@ def _group_foods(
 
     if has_location and any(i.distance_m is not None for i in rest):
         bands: list[tuple[str, str | None, float, float]] = [
-            ("До 800 м", None, 0, 800),
-            ("До 2 км", None, 800, 2000),
-            ("До 5 км", None, 2000, 5000),
-            ("Дальше", None, 5000, float("inf")),
+            (t(locale, "group.d800"), None, 0, 800),
+            (t(locale, "group.d2k"), None, 800, 2000),
+            (t(locale, "group.d5k"), None, 2000, 5000),
+            (t(locale, "group.further"), None, 5000, float("inf")),
         ]
         for title, sub, lo, hi in bands:
             bucket = [i for i in rest if i.distance_m is not None and lo <= i.distance_m < hi]
@@ -122,7 +124,7 @@ def _group_foods(
         unknown = [i for i in rest if i.distance_m is None]
         if unknown:
             unknown.sort(key=lambda i: -scores.get(i.food.id, 0))
-            groups.append({"title": "Без расстояния", "subtitle": None, "kind": "foods", "items": unknown})
+            groups.append({"title": t(locale, "group.no_distance"), "subtitle": None, "kind": "foods", "items": unknown})
         return groups
 
     if cat_hint and cat_hint.get("group") != "Разное":
@@ -159,13 +161,13 @@ def _group_foods(
     return groups
 
 
-def _group_cooks(cooks: list[tuple[User, float | None]]) -> list[dict]:
+def _group_cooks(cooks: list[tuple[User, float | None]], *, locale: str = "en") -> list[dict]:
     if not cooks:
         return []
     bands: list[tuple[str, str | None, float, float]] = [
-        ("До 1 км", None, 0, 1000),
-        ("До 3 км", None, 1000, 3000),
-        ("Дальше", None, 3000, float("inf")),
+        (t(locale, "group.c1k"), None, 0, 1000),
+        (t(locale, "group.c3k"), None, 1000, 3000),
+        (t(locale, "group.further"), None, 3000, float("inf")),
     ]
     groups: list[dict] = []
     for title, sub, lo, hi in bands:
@@ -175,7 +177,7 @@ def _group_cooks(cooks: list[tuple[User, float | None]]) -> list[dict]:
             groups.append({"title": title, "subtitle": sub, "kind": "cooks", "cook_items": bucket})
     no_dist = [(c, d) for c, d in cooks if d is None]
     if no_dist:
-        groups.append({"title": "Повара", "subtitle": None, "kind": "cooks", "cook_items": no_dist})
+        groups.append({"title": t(locale, "group.cooks"), "subtitle": None, "kind": "cooks", "cook_items": no_dist})
     return groups
 
 
@@ -187,6 +189,7 @@ async def assistant_search(
     scope: str = "feed",
 ) -> dict:
     has_location = viewer.lat is not None and viewer.lon is not None
+    loc = normalize_locale(viewer.language_code, viewer.locale)
     intent = parse_search_intent(query, has_location=has_location)
     intent = await memory_service.enrich_intent(session, viewer, intent)
 
@@ -305,10 +308,11 @@ async def assistant_search(
                 cat_hint=intent["category_hint"],
                 scores=scores,
                 top_id=top_id if len(food_items) > 1 else None,
+                locale=loc,
             )
         )
     if include_cooks and cook_items:
-        groups.extend(_group_cooks(cook_items))
+        groups.extend(_group_cooks(cook_items, locale=loc))
 
     fav_foods = await favorite_service.get_favorite_food_ids(session, viewer)
     fav_cooks = await favorite_service.get_favorite_cook_ids(session, viewer)
@@ -320,7 +324,7 @@ async def assistant_search(
         cook_count=len(cook_items),
     )
 
-    action: str | None = None
+    action: str | None = "orders" if state == "search_empty" and query.strip() else None
 
     if query.strip():
         await memory_service.observe_search(
@@ -333,12 +337,12 @@ async def assistant_search(
         )
         await session.commit()
 
-    activity = None
+    activity = await insights_service.activity_counts(session, viewer)
 
     from backend.services.meal_context import context_payload
     from backend.services.deductive_service import feed_companion
 
-    ctx_out = context_payload(meal_ctx) if meal_ctx else None
+    ctx_out = context_payload(meal_ctx, loc) if meal_ctx else None
     companion = ""
     if scope == "feed":
         companion = await feed_companion(

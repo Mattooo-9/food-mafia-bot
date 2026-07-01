@@ -1,6 +1,6 @@
 import { getInitData } from "./telegram";
-import { detectTimezone } from "./i18n";
-import type { Cook, Food, FoodFilters, MarketOverview, Order, OrderStatus, OrderWish, PaymentMethod, PriceSuggestion, ReferralInfo, Review, User, UserInsights, FoodEvaluation, Recommendation, CategoriesResponse, CategorizeResult, AssistantSearch, SearchHistoryItem, WellnessInfo } from "./types";
+import { detectTimezone, getLocale } from "./i18n";
+import type { AppConfig, Cook, Food, FoodFilters, MarketOverview, Order, OrderStatus, OrderWish, PaymentMethod, PriceSuggestion, ReferralInfo, Review, User, UserInsights, FoodEvaluation, Recommendation, CategoriesResponse, CategorizeResult, AssistantSearch, SearchHistoryItem, WellnessInfo } from "./types";
 
 export class ApiError extends Error {
   status: number;
@@ -14,6 +14,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {
     "X-Telegram-Init-Data": getInitData(),
     "X-Client-Timezone": detectTimezone(),
+    "X-Client-Locale": getLocale(),
     ...(options.headers as Record<string, string> | undefined),
   };
   if (options.body && typeof options.body === "string") {
@@ -35,6 +36,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 export const api = {
   getMe: () => request<User>("/api/me"),
+  getAppConfig: () => request<AppConfig>("/api/app-config"),
   getInsights: () => request<UserInsights>("/api/me/insights"),
   wipePrivacy: () => request<{ ok: boolean }>("/api/me/privacy", { method: "DELETE" }),
   getSearchHistory: () => request<SearchHistoryItem[]>("/api/me/searches"),

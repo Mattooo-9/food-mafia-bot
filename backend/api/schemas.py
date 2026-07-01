@@ -27,6 +27,25 @@ class CurrencyOut(BaseModel):
     referral_unit: str = "stars"
 
 
+class RegionOut(BaseModel):
+    locale: str
+    language_code: str | None = None
+    timezone: str | None = None
+    currency: str = "XTR"
+    currency_label: str = "⭐"
+    ton_per_star: float
+    payment_methods: list[str]
+    wish_radius_m: int
+    search_radius_m: int
+    telegram_proxy_hint: bool = False
+
+
+class AppConfigOut(BaseModel):
+    region: RegionOut
+    strings: dict[str, str]
+    app_title: str
+
+
 class TonPaymentOut(BaseModel):
     wallet_address: str
     amount_ton: float
@@ -34,13 +53,10 @@ class TonPaymentOut(BaseModel):
 
 
 class UserOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
     id: int
     username: str | None
     first_name: str | None
-    lat: float | None
-    lon: float | None
+    has_location: bool = False
     is_cook: bool
     cook_name: str | None
     cook_description: str | None

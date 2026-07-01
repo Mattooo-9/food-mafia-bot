@@ -19,8 +19,7 @@ def _apply_tg_profile(user: User, tg_user: TelegramUser) -> bool:
     if tg_user.language_code and user.language_code != tg_user.language_code:
         user.language_code = tg_user.language_code
         changed = True
-        if user.locale == "ru" or not user.locale:
-            user.locale = normalize_locale(tg_user.language_code, user.locale)
+        user.locale = normalize_locale(tg_user.language_code, user.locale)
         user.timezone = infer_timezone(
             timezone_name=user.timezone,
             language_code=tg_user.language_code,
@@ -43,7 +42,7 @@ async def get_or_create_user(
             language_code=tg_user.language_code,
             locale=locale,
             timezone=infer_timezone(language_code=tg_user.language_code),
-            wellness_consent=True,
+            wellness_consent=False,
         )
         session.add(user)
         await session.commit()

@@ -176,6 +176,9 @@ async def notify_subscribers_new_food(session: AsyncSession, food: Food, cook: U
 
 
 async def notify_cooks_new_wish(session: AsyncSession, wish) -> None:
+    from backend.services.region_service import region_for_user
+    from backend.utils.geo import haversine_m
+
     result = await session.execute(
         select(User).where(User.is_cook.is_(True), User.is_online.is_(True))
     )
@@ -192,9 +195,18 @@ async def notify_cooks_new_wish(session: AsyncSession, wish) -> None:
     if wish.details:
         text += f"\n💬 {wish.details[:200]}"
     text += "\n\nОткройте «Моя кухня» → «Запросы» чтобы взять заказ."
+
+    radius_m = region_for_user(buyer)["wish_radius_m"]
+    buyer_has_geo = buyer.lat is not None and buyer.lon is not None
+
     for cook in cooks:
         if cook.id == wish.buyer_id:
             continue
+        if buyer_has_geo:
+            if cook.lat is None or cook.lon is None:
+                continue
+            if haversine_m(buyer.lat, buyer.lon, cook.lat, cook.lon) > radius_m:
+                continue
         await _send(cook.tg_id, text)
 
 

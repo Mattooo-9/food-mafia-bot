@@ -3,6 +3,7 @@ import { api } from "../api";
 import AiResultGroups from "../components/AiResultGroups";
 import AiSearchHero from "../components/AiSearchHero";
 import Spinner from "../components/Spinner";
+import { t } from "../i18n";
 import { haptic } from "../telegram";
 import type { AssistantSearch, Cook } from "../types";
 
@@ -50,10 +51,11 @@ export default function CooksPage() {
 
   const empty = Boolean(query.trim()) && !loading && result && result.total_cooks === 0;
   const hasCooks = !loading && (result?.total_cooks ?? 0) > 0;
+  const section = query.trim() || t("geo.nearby_section");
 
   return (
     <div className="page">
-      <h1 className="page-title">Повара</h1>
+      <h1 className="page-title">{t("tab.cooks")}</h1>
 
       <AiSearchHero
         draft={draft}
@@ -62,18 +64,18 @@ export default function CooksPage() {
         onClear={() => runSearch("")}
         suggestions={result?.suggestions}
         showChips={(result?.suggestions?.length ?? 0) > 0}
-        placeholder={result?.context?.search_placeholder ?? "Категория или имя"}
+        placeholder={result?.context?.search_placeholder ?? t("search.placeholder")}
       />
 
       <header className="section-bar">
-        <h2>{query.trim() || "Рядом"}</h2>
+        <h2>{section}</h2>
         {hasCooks && <span className="section-meta">{result!.total_cooks}</span>}
       </header>
 
       {loading ? (
         <Spinner />
       ) : empty ? (
-        <p className="empty-line">Не найдено</p>
+        <p className="empty-line">{t("search.not_found")}</p>
       ) : hasCooks ? (
         <AiResultGroups groups={result!.groups} onToggleFavoriteCook={toggleFavorite} />
       ) : null}

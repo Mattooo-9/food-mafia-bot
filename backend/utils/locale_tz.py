@@ -32,17 +32,13 @@ _LANG_TZ: dict[str, str] = {
     "pl": "Europe/Warsaw",
 }
 
-_SUPPORTED_LOCALES = frozenset({"ru", "en"})
+from backend.i18n.messages import normalize_locale as i18n_normalize, supported_locales
+
+_SUPPORTED_LOCALES = frozenset(supported_locales())
 
 
 def normalize_locale(language_code: str | None, preferred: str | None = None) -> str:
-    if preferred and preferred.split("-")[0].lower() in _SUPPORTED_LOCALES:
-        return preferred.split("-")[0].lower()
-    if language_code:
-        base = language_code.split("-")[0].lower()
-        if base in _SUPPORTED_LOCALES:
-            return base
-    return "ru"
+    return i18n_normalize(language_code, preferred)
 
 
 def infer_timezone(

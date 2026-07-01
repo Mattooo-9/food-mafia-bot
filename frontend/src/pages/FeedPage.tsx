@@ -46,6 +46,16 @@ export default function FeedPage() {
     }
   }, [location.state, navigate]);
 
+  useEffect(() => {
+    if (
+      result?.action === "orders" &&
+      result.state === "search_empty" &&
+      query.trim()
+    ) {
+      navigate("/orders", { state: { wishTitle: query.trim() }, replace: false });
+    }
+  }, [result?.action, result?.state, query, navigate]);
+
   const toggleFavorite = async (food: Food) => {
     haptic();
     try {
@@ -74,13 +84,12 @@ export default function FeedPage() {
   const showList = result && feedHasList(state, result.total_foods);
   const companion = result?.companion?.trim() ?? "";
   const emptyLine =
-    !loading && !showList
-      ? companion ||
-        (state === "no_geo"
-          ? t("feed.no_geo")
-          : state === "no_supply"
-            ? t("feed.no_supply")
-            : "")
+    !loading && !showList && !companion
+      ? state === "no_geo"
+        ? t("feed.no_geo")
+        : state === "no_supply"
+          ? t("feed.no_supply")
+          : ""
       : "";
 
   return (

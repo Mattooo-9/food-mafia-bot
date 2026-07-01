@@ -1,11 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { api } from "./api";
-import { setLocale } from "./i18n";
-import type { User } from "./types";
+import { applyBundle, setLocale } from "./i18n";
+import type { AppConfig, User } from "./types";
 
 interface UserContextValue {
   user: User | null;
+  config: AppConfig | null;
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
@@ -14,6 +15,7 @@ interface UserContextValue {
 
 const UserContext = createContext<UserContextValue>({
   user: null,
+  config: null,
   loading: true,
   error: null,
   refresh: async () => {},
@@ -22,14 +24,18 @@ const UserContext = createContext<UserContextValue>({
 
 export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [config, setConfig] = useState<AppConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
       const me = await api.getMe();
+      const cfg = await api.getAppConfig();
       setLocale(me.locale);
+      applyBundle(cfg.region.locale, cfg.strings);
       setUser(me);
+      setConfig(cfg);
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Не удалось загрузить профиль");
@@ -62,20 +68,18 @@ export function UserProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    void (async () => {
-      await refresh();
-    })();
+    void refresh();
   }, [refresh]);
 
   useEffect(() => {
-    if (!loading && user && user.lat == null) {
+    if (!loading && user && !user.has_location) {
       void requestLocation();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, user?.id]);
 
   return (
-    <UserContext.Provider value={{ user, loading, error, refresh, requestLocation }}>
+    <UserContext.Provider value={{ user, config, loading, error, refresh, requestLocation }}>
       {children}
     </UserContext.Provider>
   );

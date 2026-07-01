@@ -34,7 +34,7 @@ function AppInner() {
   if (error || !user) {
     return (
       <div className="error-screen">
-        <h1>Еда Рядом</h1>
+        <h1>{t("app.title")}</h1>
         <p>{error ?? t("app.error")}</p>
         <p className="hint">{t("app.hint")}</p>
       </div>

@@ -237,4 +237,5 @@ async def clear_memory(session: AsyncSession, user_id: int) -> None:
     mem.companion_note = ""
     mem.searches_count = 0
     mem.prefers_cheap = False
+    mem.wellness_state = "{}"
     await session.commit()

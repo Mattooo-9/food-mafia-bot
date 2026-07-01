@@ -12,13 +12,13 @@ import {
 import Spinner from "../components/Spinner";
 import AiEvaluationBadge from "../components/AiEvaluationBadge";
 import Stars from "../components/Stars";
-import { PAYMENT_METHODS } from "../constants";
+import { PAYMENT_METHODS, paymentMethodsForRegion } from "../constants";
 import { haptic, openInvoice, showAlert } from "../telegram";
 import type { Food, PaymentMethod, ReferralInfo, Review, TonPayment } from "../types";
 import { useUser } from "../UserContext";
 
 export default function FoodPage() {
-  const { user, refresh } = useUser();
+  const { user, config, refresh } = useUser();
   const { id } = useParams();
   const navigate = useNavigate();
   const [tonConnectUI] = useTonConnectUI();
@@ -229,7 +229,7 @@ export default function FoodPage() {
           <div className="field" style={{ marginTop: 12 }}>
             <label>Способ оплаты</label>
             <div className="chips" style={{ paddingBottom: 0 }}>
-              {PAYMENT_METHODS.map((m) => {
+              {paymentMethodsForRegion(config?.region.payment_methods).map((m) => {
                 const disabled = m.id === "TON" && !food.cook_accepts_ton;
                 return (
                   <button

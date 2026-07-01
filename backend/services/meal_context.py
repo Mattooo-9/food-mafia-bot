@@ -232,11 +232,21 @@ def score_adjustments(
     return delta
 
 
-def context_payload(ctx: MealContext) -> dict:
+def context_payload(ctx: MealContext, locale: str | None = None) -> dict:
+    from backend.i18n.messages import normalize_locale, t
+
+    loc = normalize_locale(None, locale)
+    placeholder_key = {
+        "morning": "search.placeholder",
+        "lunch": "search.placeholder",
+        "afternoon": "search.placeholder",
+        "evening": "search.placeholder",
+        "night": "search.placeholder",
+    }.get(ctx.bucket, "search.placeholder")
     return {
         "meal": ctx.bucket,
-        "section_label": ctx.section_label,
-        "search_placeholder": ctx.search_placeholder,
+        "section_label": t(loc, f"meal.{ctx.bucket}"),
+        "search_placeholder": t(loc, placeholder_key),
         "season": ctx.season,
         "is_weekend": ctx.is_weekend,
     }

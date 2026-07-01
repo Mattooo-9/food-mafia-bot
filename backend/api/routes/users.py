@@ -2,12 +2,14 @@ from fastapi import APIRouter, HTTPException
 
 from backend.api.deps import CurrentUser, SessionDep
 from backend.api.schemas import (
+    AppConfigOut,
     CategoriesOut,
     CookProfileIn,
     CurrencyOut,
     LocationIn,
     OkOut,
     ReferralOut,
+    RegionOut,
     SearchHistoryOut,
     UserInsightsOut,
     UserOut,
@@ -16,8 +18,10 @@ from backend.api.schemas import (
 )
 from backend.config import settings
 from backend.services import insights_service, referral_service, search_history_service, user_service
+from backend.services.region_service import app_config, region_for_user
 from backend.services.user_service import WalletError
 from backend.utils.categories import tree_for_api, all_paths
+from backend.utils.user_out import user_to_out
 
 router = APIRouter(tags=["users"])
 
@@ -29,13 +33,23 @@ async def my_insights(user: CurrentUser, session: SessionDep) -> UserInsightsOut
 
 @router.get("/me", response_model=UserOut)
 async def get_me(user: CurrentUser) -> UserOut:
-    return UserOut.model_validate(user)
+    return user_to_out(user)
+
+
+@router.get("/app-config", response_model=AppConfigOut)
+async def get_app_config(user: CurrentUser) -> AppConfigOut:
+    cfg = app_config(user)
+    return AppConfigOut(
+        region=RegionOut(**cfg["region"]),
+        strings=cfg["strings"],
+        app_title=cfg["app_title"],
+    )
 
 
 @router.post("/me/location", response_model=UserOut)
 async def set_location(payload: LocationIn, user: CurrentUser, session: SessionDep) -> UserOut:
     updated = await user_service.update_location(session, user, payload.lat, payload.lon)
-    return UserOut.model_validate(updated)
+    return user_to_out(updated)
 
 
 @router.post("/me/preferences", response_model=UserOut)
@@ -45,13 +59,13 @@ async def set_preferences(
     updated = await user_service.update_preferences(
         session, user, locale=payload.locale, timezone=payload.timezone
     )
-    return UserOut.model_validate(updated)
+    return user_to_out(updated)
 
 
 @router.post("/me/onboarding", response_model=UserOut)
 async def finish_onboarding(user: CurrentUser, session: SessionDep) -> UserOut:
     updated = await user_service.complete_onboarding(session, user)
-    return UserOut.model_validate(updated)
+    return user_to_out(updated)
 
 
 @router.post("/me/cook-profile", response_model=UserOut)
@@ -66,7 +80,7 @@ async def upsert_cook_profile(
         cook_photo=payload.cook_photo,
         is_online=payload.is_online,
     )
-    return UserOut.model_validate(updated)
+    return user_to_out(updated)
 
 
 @router.get("/me/referral", response_model=ReferralOut)
@@ -81,7 +95,7 @@ async def set_wallet(payload: WalletIn, user: CurrentUser, session: SessionDep) 
         updated = await user_service.update_wallet(session, user, payload.ton_wallet_address)
     except WalletError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return UserOut.model_validate(updated)
+    return user_to_out(updated)
 
 
 @router.get("/currency", response_model=CurrencyOut)
@@ -115,6 +129,10 @@ async def wipe_privacy_data(user: CurrentUser, session: SessionDep) -> OkOut:
 
     await search_history_service.clear_searches(session, user.id)
     await memory_service.clear_memory(session, user.id)
+    user.wellness_consent = False
+    user.diet_preference = None
+    user.activity_level = "moderate"
+    await session.commit()
     return OkOut()
 
 
