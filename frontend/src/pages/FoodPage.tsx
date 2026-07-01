@@ -12,7 +12,7 @@ import {
 import Spinner from "../components/Spinner";
 import AiEvaluationBadge from "../components/AiEvaluationBadge";
 import Stars from "../components/Stars";
-import { PAYMENT_METHODS, paymentMethodsForRegion } from "../constants";
+import { paymentMethodsForRegion } from "../constants";
 import { haptic, openInvoice, showAlert } from "../telegram";
 import type { Food, PaymentMethod, ReferralInfo, Review, TonPayment } from "../types";
 import { useUser } from "../UserContext";
